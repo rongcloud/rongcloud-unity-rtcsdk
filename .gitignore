@@ -1,0 +1,16 @@
+.DS_Store
+Library/
+.idea/
+obj/
+.gradle
+.idea
+Library/
+Logs/
+Packages/
+Temp/
+*.csproj
+*.sln
+.vsconfig
+.vs/
+build/
+*.xcuserdatad

@@ -1,0 +1,25 @@
+allprojects {
+    buildscript {
+        repositories {
+            google()
+            jcenter()
+        }
+
+        dependencies {
+            classpath 'com.android.tools.build:gradle:4.0.1'
+        }
+    }
+
+    repositories {
+        google()
+        jcenter()
+        maven { url "https://maven.rongcloud.cn/repository/maven-releases/"}
+        flatDir {
+            dirs "${project(':unityLibrary').projectDir}/libs"
+        }
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
