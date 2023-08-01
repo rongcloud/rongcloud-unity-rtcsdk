@@ -17,7 +17,7 @@ namespace cn_rongcloud_rtc_unity_example
 
         public static String MediaServer { get; set; }= "";
 
-        public static readonly String Host = "http://47.93.191.216:8080";
+        public static readonly String Host = "";
     }
 
     public class Config
@@ -33,11 +33,11 @@ namespace cn_rongcloud_rtc_unity_example
         {
             return new Config
             {
-                AppKey = "z3v5yqkbv8v30",
+                AppKey = "", // 必填
                 NavServer = "nav.cn.ronghub.com",
                 FileServer = "up.qbox.me",
                 MediaServer = "",
-                Token = "vLP+b1sr4ydPgrRwRXv0JbcovqeE5FYvfN0mxNSrELg=@emx6.cn.rongnav.com;emx6.cn.rongcfg.com",
+                Token = "", // 必填
                 Id = "utd_0000"
             };
         }
