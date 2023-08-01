@@ -7,10 +7,11 @@ namespace cn_rongcloud_rtc_unity
     /// </summary>
     public struct RCRTCAudioConfig
     {
-        private RCRTCAudioConfig(RCRTCAudioQuality quality, RCRTCAudioScenario scenario)
+        private RCRTCAudioConfig(RCRTCAudioQuality quality, RCRTCAudioScenario scenario, int recordingVolume)
         {
             this.quality = quality;
             this.scenario = scenario;
+            this.recordingVolume = recordingVolume;
         }
 
         /// <summary>
@@ -19,7 +20,7 @@ namespace cn_rongcloud_rtc_unity
         /// <returns>音频设置</returns>
         public static RCRTCAudioConfig Create()
         {
-            return new RCRTCAudioConfig(RCRTCAudioQuality.SPEECH, RCRTCAudioScenario.DEFAULT);
+            return new RCRTCAudioConfig(RCRTCAudioQuality.SPEECH, RCRTCAudioScenario.DEFAULT, 100);
         }
 
         /// <summary>
@@ -38,6 +39,15 @@ namespace cn_rongcloud_rtc_unity
         public RCRTCAudioScenario GetScenario()
         {
             return scenario;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public int GetRecordingVolume()
+        {
+            return recordingVolume;
         }
 
         /// <summary>
@@ -62,8 +72,15 @@ namespace cn_rongcloud_rtc_unity
             return this;
         }
 
+        public RCRTCAudioConfig SetRecordingVolume(int volume)
+        {
+            this.recordingVolume = volume;
+            return this;
+        }
+
         private RCRTCAudioQuality quality;
         private RCRTCAudioScenario scenario;
+        private int recordingVolume;
     }
 
     /// <summary>

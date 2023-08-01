@@ -25,16 +25,6 @@ namespace cn_rongcloud_rtc_unity_example
     {
         private void Start()
         {
-
-#if !UNITY_EDITOR
-#if !UNITY_ANDROID
-            RCIMClient.Instance.Init(ExampleConfig.AppKey);
-#endif
-            RCIMClient.Instance.OnSendMessageSucceed += Instance_OnSendMessageSucceed;
-            RCIMClient.Instance.OnSendMessageFailed += Instance_OnSendMessageFailed;
-            RCIMClient.Instance.OnMessageReceived += OnIMReceivedMessage;
-#endif
-
             ConnectCanvas = GameObject.Find("Connect").GetComponent<Canvas>().gameObject;
             ConnectCanvasAppKeyInput = GameObject.Find("/Connect/AppKeyInput").GetComponent<InputField>();
             ConnectCanvasNaviServerInput = GameObject.Find("/Connect/NaviServerInput").GetComponent<InputField>();
@@ -57,11 +47,6 @@ namespace cn_rongcloud_rtc_unity_example
                 GameObject.Find("/Meeting/EnableCameraSwitch/Text").GetComponent<Text>();
             MeetingCanvasPublishAudioSwitchInfo =
                 GameObject.Find("/Meeting/PublishAudioSwitch/Text").GetComponent<Text>();
-            MeetingAudioSource = GameObject.Find("Meeting").GetComponent<AudioSource>();
-            MeetingCanvasPlayBackgroundMusicSwitchButton = GameObject.Find("/Meeting/PlayBackgroundMusicSwitch")
-                .GetComponent<Button>().gameObject;
-            MeetingCanvasPlayBackgroundMusicSwitchInfo =
-                GameObject.Find("/Meeting/PlayBackgroundMusicSwitch/Text").GetComponent<Text>();
             MeetingCanvasSwitchAudioOutputInfo =
                 GameObject.Find("/Meeting/SwitchAudioOutput/Text").GetComponent<Text>();
             MeetingCanvasStatsTable = GameObject.Find("/Meeting/StatsTable/Viewport/Content");
@@ -69,6 +54,9 @@ namespace cn_rongcloud_rtc_unity_example
             MeetingPublishVideoText = GameObject.Find("/Meeting/PublishVideoSwitch/Text").GetComponent<Text>();
             MeetingVideoConfigPanel = GameObject.Find("/Meeting/VideoConfigPanel").GetComponent<VideoConfigPrefab>();
             MeetingVideoConfigPanel.OnValueChanged = OnVideoConfigChanged;
+
+            TinyVideoConfigPrefab MeetingTinyVideo = GameObject.Find("/Meeting/TinyVideoConfigPanel").GetComponent<TinyVideoConfigPrefab>();
+            MeetingTinyVideo.OnValueChanged = OnTinyVideoConfigChanged;
 
             HostCanvas = GameObject.Find("Host").GetComponent<Canvas>().gameObject;
             HostCanvasTitle = GameObject.Find("/Host/Title").GetComponent<Text>();
@@ -79,11 +67,15 @@ namespace cn_rongcloud_rtc_unity_example
             HostCanvasPublishAudioSwitchInfo = GameObject.Find("/Host/PublishAudioSwitch/Text").GetComponent<Text>();
             HostCanvasSwitchAudioOutputInfo = GameObject.Find("/Host/SwitchAudioOutput/Text").GetComponent<Text>();
             HostPublishVideoText = GameObject.Find("/Host/PublishVideoSwitch/Text").GetComponent<Text>();
-            HostCanvasConfigCDN = GameObject.Find("/Host/ConfigCDN").GetComponent<Button>();
             HostCanvasStatsTable = GameObject.Find("/Host/StatsTable/Viewport/Content");
             HostCanvasUserList = GameObject.Find("/Host/UserList/Viewport/Content");
             HostVideoConfigPanel = GameObject.Find("/Host/VideoConfigPanel").GetComponent<VideoConfigPrefab>();
             HostVideoConfigPanel.OnValueChanged = OnVideoConfigChanged;
+            VideoConfigPrefab HostCustomStream = GameObject.Find("/Host/CustomStream/VideoConfigPanel").GetComponent<VideoConfigPrefab>();
+            HostCustomStream.OnValueChanged = OnCustomStreamVideoConfigChanged;
+
+            TinyVideoConfigPrefab HostTinyVideo = GameObject.Find("/Host/TinyVideoConfigPanel").GetComponent<TinyVideoConfigPrefab>();
+            HostTinyVideo.OnValueChanged = OnTinyVideoConfigChanged;
 
             AudienceCanvas = GameObject.Find("Audience").GetComponent<Canvas>().gameObject;
             AudienceCanvasTitle = GameObject.Find("/Audience/Title").GetComponent<Text>();
@@ -96,9 +88,7 @@ namespace cn_rongcloud_rtc_unity_example
             AudienceVideoToggle = GameObject.Find("/Audience/Video").GetComponent<Toggle>();
             AudienceAudioVideoToggle = GameObject.Find("/Audience/AudioVideo").GetComponent<Toggle>();
             AudienceTinyStream = GameObject.Find("/Audience/TinyStream").GetComponent<Toggle>();
-            AudienceLiveStreamText = GameObject.Find("/Audience/LiveStreamText").GetComponent<Text>();
-            AudienceLiveStreamText.text = string.Empty;
-            initAudienceUIState();
+            resetAudienceUI();
 
             MessageCanvas = GameObject.Find("Message").GetComponent<Canvas>().gameObject;
             MessageCanvasActionInfo = GameObject.Find("/Message/Panel/Action/Text").GetComponent<Text>();
@@ -120,12 +110,8 @@ namespace cn_rongcloud_rtc_unity_example
             AudioMixCanvasPlaybackVolume =
                 GameObject.Find("/AudioMix/Background/PlaybackVolume").GetComponent<Slider>();
 
-            LoadingCanvas = GameObject.Find("Loading").GetComponent<Canvas>().gameObject;
-
-            Toast = GameObject.Find("/Toast/Toast").GetComponent<CanvasGroup>();
-            ToastInfo = GameObject.Find("/Toast/Toast/Info").GetComponent<Text>();
-
             HostMixConfig = GameObject.Find("HostMixConfig").GetComponent<Canvas>().gameObject;
+            HostMixBgConfig = GameObject.Find("HostMixVideoBgConfig");
             HostMixVideoStreamConfig = GameObject.Find("HostMixVideoStreamConfig").GetComponent<Canvas>().gameObject;
             HostMixTinyVideoStreamConfig =
                 GameObject.Find("HostMixTinyVideoStreamConfig").GetComponent<Canvas>().gameObject;
@@ -139,7 +125,12 @@ namespace cn_rongcloud_rtc_unity_example
             DeviceListCanvas = GameObject.Find("DeviceList");
             DeviceList = GameObject.Find("DeviceList/Scroll View/Viewport/Content");
 
+            SubRoomCanvas = GameObject.Find("SubRoom");
+
+            SeiCanvas = GameObject.Find("SEI");
+
             HostMixConfig.SetActive(false);
+            HostMixBgConfig.SetActive(false);
             HostMixVideoStreamConfig.SetActive(false);
             HostMixTinyVideoStreamConfig.SetActive(false);
             HostMixVideoCustomLayoutConfig.SetActive(false);
@@ -156,10 +147,9 @@ namespace cn_rongcloud_rtc_unity_example
             ConfigCDNCanvas.SetActive(false);
             AudioEffectCanvas.SetActive(false);
             AudioMixCanvas.SetActive(false);
-            LoadingCanvas.SetActive(false);
-            MeetingCanvasPlayBackgroundMusicSwitchButton.SetActive(false);
             DeviceListCanvas.SetActive(false);
-            Toast.alpha = 0.0f;
+            SubRoomCanvas.SetActive(false);
+            SeiCanvas.SetActive(false);
 
             Connected = false;
 
@@ -171,14 +161,13 @@ namespace cn_rongcloud_rtc_unity_example
             CDNs = new Dictionary<CDN, GameObject>();
             SelectedCDNs = new List<GameObject>();
             AudioEffects = new Dictionary<int, GameObject>();
+            SavedJsonPath = Application.persistentDataPath + "/savedInfo.json";
             _videoCustomLayouts.Clear();
             PushEnabled = GameObject.Find("/Connect/PushEnabled").GetComponent<Toggle>();
             IpcDisEnabled = GameObject.Find("/Connect/IpcDisEnabled").GetComponent<Toggle>();
-            InitButton = GameObject.Find("/Connect/Init").GetComponent<Button>();
 #if !UNITY_ANDROID
             PushEnabled.gameObject.SetActive(false);
             IpcDisEnabled.gameObject.SetActive(false);
-            InitButton.gameObject.SetActive(false);
 #else
             PushEnabled.isOn = mPushEnabled;
             IpcDisEnabled.isOn = mDisableIPC;
@@ -187,22 +176,8 @@ namespace cn_rongcloud_rtc_unity_example
             CurrentMicrophones = new List<RCRTCDevice>();
             CurrentSpeakers = new List<RCRTCDevice>();
 #endif
-        }
 
-        private void Instance_OnSendMessageFailed(RCErrorCode errorCode, RCMessage message)
-        {
-            if (errorCode != RCErrorCode.Succeed)
-            {
-                ShowToast("发送消息失败，Error " + errorCode);
-            }
-        }
-
-        private void Instance_OnSendMessageSucceed(RCMessage message)
-        {
-            RunOnMainThread.Enqueue(() =>
-            {
-                AddMessage(String.Format("{0} (我): {1}", message.ObjectName, message));
-            });
+            LoadTokenInfo();
         }
 
         private void Update()
@@ -214,6 +189,55 @@ namespace cn_rongcloud_rtc_unity_example
                     action?.Invoke();
                 }
             }
+            if (EchoTest)
+            {
+                var time = Time.realtimeSinceStartup;
+                int count = 0;
+                if (EchoTestDeltaTime == 0)
+                {
+                    EchoTestDeltaTime = time;
+                }
+                else
+                {
+                    count = (int)(time - EchoTestDeltaTime);
+                }
+                Text countDown = GameObject.Find("/EchoTest/CountDown").GetComponent<Text>();
+                Text tip = GameObject.Find("/EchoTest/Tip").GetComponent<Text>();
+                if (count <= EchoTestTime)
+                {
+                    tip.text = "请说一些话";
+                    countDown.text = count.ToString();
+                }
+                else if (count <= EchoTestTime * 2)
+                {
+                    tip.text = "现在应该能听到刚才的声音";
+                    countDown.text = (EchoTestTime * 2 - count).ToString();
+                }
+                else
+                {
+                    tip.text = "";
+                    countDown.text = "";
+                }
+            }
+            if (Sei)
+            {
+                var time = Time.realtimeSinceStartup;
+                int delta = (int)(time - SeiDeltaTime);
+                if (delta >= 2)
+                {
+                    SeiDeltaTime = time;
+                    SeiCountDown += 1;
+                    if (SeiCountDown <= SeiCount)
+                    {
+                        int ret = Engine.SendSei(SeiText + SeiCountDown.ToString());
+                        Debug.Log($"sendSEI code:{ret}");
+                    }
+                    else
+                    {
+                        SeiDeltaTime = 0;
+                    }
+                }
+            }
         }
 
 #if UNITY_EDITOR
@@ -221,7 +245,7 @@ namespace cn_rongcloud_rtc_unity_example
         {
             Engine?.LeaveRoom();
             Engine?.Destroy();
-            RCIMClient.Instance.Destroy();
+            imEngine?.Destroy();
         }
 #endif
 
@@ -229,74 +253,1375 @@ namespace cn_rongcloud_rtc_unity_example
         {
             Engine?.LeaveRoom();
             Engine?.Destroy();
-            RCIMClient.Instance.Destroy();
+            imEngine?.Destroy();
         }
 
         #region UI Event
 
-        public void OnClickHostMixConfig()
+        #region 连接页面
+        public void OnClickConnect()
         {
-            HostCanvas.SetActive(false);
-            HostMixConfig.SetActive(true);
+            if (Connected)
+            {
+                imEngine?.Disconnect(true);
+                ChangeToUnconnect();
+            }
+            else
+            {
+                if (String.IsNullOrEmpty(ConnectCanvasTokenInput.text))
+                {
+                    ExampleUtils.ShowToast("请输入Token!");
+                    return;
+                }
+                ConnectIM(ConnectCanvasTokenInput.text);
+            }
         }
 
-        public void OnClickCloseHostLiveMixConfig()
+        public void OnClickGenerate()
         {
-            HostCanvas.SetActive(true);
-            HostMixConfig.SetActive(false);
+            if (string.IsNullOrEmpty(ConnectCanvasAppKeyInput.text))
+            {
+                ExampleUtils.ShowToast("请输入Appkey");
+                return;
+            }
+
+            ExampleConfig.AppKey = ConnectCanvasAppKeyInput.text;
+            ExampleConfig.NavServer = ConnectCanvasNaviServerInput.text;
+            ExampleConfig.FileServer = ConnectCanvasFileServerInput.text;
+            ExampleConfig.MediaServer = ConnectCanvasMediaServerInput.text;
+
+            GenerateToken();
         }
 
-        public void OnHostMixVideoModeCustomSelectStateChanged(bool selected)
+        public void OnClickJoin()
+        {
+            if (String.IsNullOrEmpty(RoomId))
+            {
+                ExampleUtils.ShowToast("房间号不能为空！");
+                return;
+            }
+
+            ExampleUtils.ShowLoading();
+            RCRTCRoomSetup.Builder roomSetupBuilder = RCRTCRoomSetup.Builder.Create();
+            RCRTCEngineSetup.Builder engineSetupBuilder = RCRTCEngineSetup.Builder.Create();
+            RCRTCVideoSetup.Builder videoSetupBuilder = RCRTCVideoSetup.Builder.Create();
+            engineSetupBuilder.WithMediaUrl(ExampleConfig.MediaServer);
+            switch (Role)
+            {
+                case RCRTCRole.MEETING_MEMBER:
+                    engineSetupBuilder.WithEnableSRTP(ConnectedRoomStreamConfig.SrtpEnabled);
+                    videoSetupBuilder.WithEnableTinyStream(ConnectedRoomStreamConfig.TinyEnabled);
+                    break;
+                case RCRTCRole.LIVE_BROADCASTER:
+                    RCRTCMediaType mediaType = RCRTCMediaType.AUDIO_VIDEO;
+                    if (ConnectedRoomStreamConfig.AudioOnlyMode)
+                    {
+                        mediaType = RCRTCMediaType.AUDIO;
+                    }
+
+                    roomSetupBuilder.WithMediaType(mediaType);
+                    videoSetupBuilder.WithEnableTinyStream(ConnectedRoomStreamConfig.TinyEnabled);
+                    engineSetupBuilder.WithEnableSRTP(ConnectedRoomStreamConfig.SrtpEnabled);
+                    break;
+                case RCRTCRole.LIVE_AUDIENCE:
+                    engineSetupBuilder.WithEnableSRTP(ConnectedRoomStreamConfig.SrtpEnabled);
+                    break;
+            }
+
+            engineSetupBuilder.WithVideoSetup(videoSetupBuilder.Build());
+            Engine = RCRTCEngine.Create(engineSetupBuilder.Build());
+#if UNITY_STANDALONE_WIN
+            Engine.OnCameraListChanged = OnCameraLiseChange;
+            Engine.OnMicrophoneListChanged = OnMicrophoneLiseChange;
+            Engine.OnSpeakerListChanged = OnSpeakerLiseChange;
+            Engine.OnCameraSwitched = OnCameraChange;
+#else
+            Engine.OnCameraSwitched = OnCameraChange;
+#endif
+
+            switch (Role)
+            {
+                case RCRTCRole.MEETING_MEMBER:
+                    Engine.OnUserJoined = MeetingOnUserJoined;
+                    Engine.OnUserOffline = MeetingOnUserOffline;
+                    Engine.OnUserLeft = MeetingOnUserLeft;
+
+                    Engine.OnRemotePublished = MeetingOnRemotePublished;
+                    Engine.OnRemoteUnpublished = MeetingOnRemoteUnpublished;
+                    break;
+                case RCRTCRole.LIVE_BROADCASTER:
+                    Engine.OnUserJoined = OnUserJoined;
+                    Engine.OnUserOffline = OnUserOffline;
+                    Engine.OnUserLeft = OnUserLeft;
+
+                    Engine.OnRemotePublished = OnRemotePublished;
+                    Engine.OnRemoteUnpublished = OnRemoteUnpublished;
+                    Engine.OnSubRoomBanded = OnSubRoomBanded;
+                    Engine.OnSubRoomDisband = OnSubRoomDisband;
+                    Engine.OnJoinSubRoomRequestReceived = OnJoinSubRoomRequestReceived;
+                    Engine.OnJoinSubRoomRequestResponseReceived = OnJoinSubRoomRequestResponseReceived;
+                    Engine.OnRemoteCustomStreamPublished = OnRemoteCustomStreamPublished;
+                    Engine.OnRemoteCustomStreamUnpublished = OnRemoteCustomStreamUnpublished;
+                    Engine.OnSeiReceived = OnSeiReceived;
+                    Engine.OnRemoteLiveRoleSwitched = OnRemoteLiveRoleSwitched;
+                    break;
+                case RCRTCRole.LIVE_AUDIENCE:
+                    Engine.OnUserJoined = OnUserJoined;
+                    Engine.OnUserOffline = OnUserOffline;
+                    Engine.OnUserLeft = OnUserLeft;
+                    Engine.OnRemotePublished = OnRemotePublished;
+                    Engine.OnRemoteUnpublished = OnRemoteUnpublished;
+                    Engine.OnRemoteLiveMixPublished = AudienceOnRemoteLiveMixPublished;
+                    Engine.OnRemoteLiveMixUnpublished = AudienceOnRemoteLiveMixUnpublished;
+                    Engine.OnLiveMixSeiReceived = OnLiveMixSeiReceived;
+                    break;
+            }
+            Engine.OnRoomJoined = delegate (int code, String message)
+            {
+                Engine.OnRoomJoined = null;
+
+                RunOnMainThread.Enqueue(() =>
+                {
+                    ExampleUtils.HideLoading();
+                    if (code == 0)
+                    {
+                        ConnectedCanvas.SetActive(false);
+                        switch (Role)
+                        {
+                            case RCRTCRole.MEETING_MEMBER:
+                                ChangeToMeeting(RoomId);
+                                break;
+                            case RCRTCRole.LIVE_BROADCASTER:
+                                ChangeToHost(RoomId);
+                                break;
+                            case RCRTCRole.LIVE_AUDIENCE:
+                                ChangeToAudience(RoomId);
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        ExampleUtils.ShowToast(message);
+                    }
+                });
+            };
+
+            RCRTCRoomSetup setup = roomSetupBuilder.WithRole(Role).Build();
+            int ret = Engine.JoinRoom(RoomId, setup);
+            if (ret != 0)
+            {
+                ExampleUtils.HideLoading();
+                ExampleUtils.ShowToast("Error " + ret);
+            }
+        }
+
+        public void OnClickEnablePush()
+        {
+#if UNITY_ANDROID
+            mPushEnabled = PushEnabled.isOn;
+#endif
+        }
+
+        public void OnClickEnableIpc()
+        {
+#if UNITY_ANDROID
+            mDisableIPC = IpcDisEnabled.isOn;
+#endif
+        }
+
+        private bool EchoTest;
+        private int EchoTestTime;
+        private float EchoTestDeltaTime;
+
+        public void OnClickEchoTest()
+        {
+            if (EchoTest)
+            {
+                StopEchoTest();
+            }
+            else
+            {
+                InputField input = GameObject.Find("/EchoTest/InputField").GetComponent<InputField>();
+                string text = input.text;
+                if (text == null || text.Length == 0)
+                {
+                    ExampleUtils.ShowToast("请输入时间");
+                    return;
+                }
+                int time = int.Parse(text);
+                if (time < 2 || time > 10)
+                {
+                    time = 10;
+                }
+                if (Engine == null)
+                {
+                    Engine = RCRTCEngine.Create();
+                }
+                int ret = Engine.StartEchoTest(time);
+                if (ret == 0)
+                {
+                    Text button = GameObject.Find("/EchoTest/Start/Text").GetComponent<Text>();
+                    button.text = "停止检测";
+                    EchoTestTime = time;
+                    EchoTest = true;
+                    ExampleUtils.ShowToast("已开始");
+                }
+                else
+                {
+                    ExampleUtils.ShowToast($"开始失败 code:{ret}");
+                }
+            }
+        }
+
+        public void OnClickCloseEchoTest()
+        {
+            StopEchoTest();
+            GameObject.Find("/EchoTest").SetActive(false);
+        }
+
+        #region Token保存
+        private string SavedJsonPath;
+
+        public void SaveTokenInfo()
+        {
+            if (User != null)
+            {
+                Config config = new Config
+                {
+                    AppKey = ExampleConfig.AppKey,
+                    NavServer = ExampleConfig.NavServer,
+                    FileServer = ExampleConfig.FileServer,
+                    MediaServer = ExampleConfig.MediaServer,
+                    Token = User.Token,
+                    Id = User.Id,
+                };
+                if (!SavedInfos.Contains(config))
+                {
+                    SavedInfos.Add(config);
+                    ReloadTokenInfo(false);
+                }
+                var json = JsonConvert.SerializeObject(SavedInfos);
+                File.WriteAllText(SavedJsonPath, json);
+            }
+        }
+
+        public void LoadTokenInfo()
+        {
+            if (SavedInfos == null)
+            {
+                SavedInfos = new List<Config>();
+                if (File.Exists(SavedJsonPath))
+                {
+                    var json = File.ReadAllText(SavedJsonPath);
+                    if (json.Length > 0)
+                    {
+                        SavedInfos = JsonConvert.DeserializeObject<List<Config>>(json);
+                    }
+                }
+            }
+            if (SavedInfos.Count == 0)
+            {
+                SavedInfos.Add(Config.DefaultConfig());
+            }
+            ReloadTokenInfo(true);
+        }
+
+        public void ClearTokenInfo()
+        {
+            SavedInfos = new List<Config>() { Config.DefaultConfig() };
+            var json = JsonConvert.SerializeObject(SavedInfos);
+            File.WriteAllText(SavedJsonPath, json);
+            ReloadTokenInfo(true);
+        }
+
+        public void OnTokenOptionsValueChanged()
+        {
+            Dropdown tokenOptions = GameObject.Find("/Connect/History").GetComponent<Dropdown>();
+            LoadTokenConfig(SavedInfos[tokenOptions.value]);
+        }
+
+        private void LoadTokenConfig(Config conifg)
+        {
+            ExampleConfig.AppKey = conifg.AppKey;
+            ConnectCanvasAppKeyInput.text = conifg.AppKey;
+            ExampleConfig.NavServer = conifg.NavServer;
+            ConnectCanvasNaviServerInput.text = conifg.NavServer;
+            ExampleConfig.FileServer = conifg.FileServer;
+            ConnectCanvasFileServerInput.text = conifg.FileServer;
+            ExampleConfig.MediaServer = conifg.MediaServer;
+            ConnectCanvasMediaServerInput.text = conifg.MediaServer;
+            ConnectCanvasTokenInput.text = conifg.Token;
+            User = new LoginData();
+            User.userId = conifg.Id;
+            User.token = conifg.Token;
+        }
+
+        private void ReloadTokenInfo(bool reset)
+        {
+            Dropdown tokenOptions = GameObject.Find("/Connect/History").GetComponent<Dropdown>();
+            tokenOptions.options.Clear();
+            var optionDatas = new List<Dropdown.OptionData>();
+            foreach (var item in SavedInfos)
+            {
+                optionDatas.Add(new Dropdown.OptionData(item.Title()));
+            }
+            tokenOptions.AddOptions(optionDatas);
+            if (reset)
+            {
+                tokenOptions.SetValueWithoutNotify(0);
+                LoadTokenConfig(SavedInfos[0]);
+            }
+            else
+            {
+                var value = optionDatas.Count - 1;
+                tokenOptions.SetValueWithoutNotify(value);
+                LoadTokenConfig(SavedInfos[value]);
+            }
+        }
+        #endregion
+
+        #endregion
+
+        #region 模式选择页面
+        public void OnMeetingModeSelectStateChanged(bool selected)
         {
             if (selected)
             {
-                HostMixConfig.SetActive(false);
+                Role = RCRTCRole.MEETING_MEMBER;
+                ConnectedCanvasJoinText.text = "加入会议";
+                ConnectedRoomStreamConfig.SetRoomMode(RoomStreamConfigPrefab.RoomMode.MeetingRoom);
+            }
+        }
+
+        public void OnHostModeSelectStateChanged(bool selected)
+        {
+            if (selected)
+            {
+                Role = RCRTCRole.LIVE_BROADCASTER;
+                ConnectedCanvasJoinText.text = "开始直播";
+                ConnectedRoomStreamConfig.SetRoomMode(RoomStreamConfigPrefab.RoomMode.HostRoom);
+            }
+        }
+
+        public void OnAudienceModeSelectStateChanged(bool selected)
+        {
+            if (selected)
+            {
+                Role = RCRTCRole.LIVE_AUDIENCE;
+                ConnectedCanvasJoinText.text = "观看直播";
+                ConnectedRoomStreamConfig.SetRoomMode(RoomStreamConfigPrefab.RoomMode.AudienceRoom);
+
+            }
+        }
+
+        public void OnRoomIdChanged(String id)
+        {
+            RoomId = id;
+        }
+
+        private bool NetDetect;
+
+        public void OnClickNetDetect()
+        {
+            if (NetDetect)
+            {
+                int ret = Engine.StopNetworkProbe();
+                if (ret == 0)
+                {
+                    Text button = GameObject.Find("/NetDetect/Start/Text").GetComponent<Text>();
+                    button.text = "开启探测";
+                    NetDetect = false;
+                    Engine.Destroy();
+                    Engine = null;
+                    ExampleUtils.ShowToast("停止成功");
+                }
+                else
+                {
+                    ExampleUtils.ShowToast("停止失败");
+                }
+            }
+            else
+            {
+                if (Engine == null)
+                {
+                    Engine = RCRTCEngine.Create();
+                }
+                Text up = GameObject.Find("/NetDetect/Up").GetComponent<Text>();
+                Text down = GameObject.Find("/NetDetect/Down").GetComponent<Text>();
+                int ret = Engine.StartNetworkProbe(new NetworkProbeProxy((RCRTCNetworkProbeStats stats) =>
+                {
+                    RunOnMainThread.Enqueue(() =>
+                    {
+                        down.text = $"下行 ｜ 质量：{stats.qualityLevel} | 往返：{stats.rtt}ms | 丢包率：{stats.packetLostRate}";
+                    });
+                }, (RCRTCNetworkProbeStats stats) => {
+                    RunOnMainThread.Enqueue(() =>
+                    {
+                        up.text = $"上行 ｜ 质量：{stats.qualityLevel} | 往返：{stats.rtt}ms | 丢包率：{stats.packetLostRate}";
+                    });
+                }));
+                if (ret == 0)
+                {
+                    Text button = GameObject.Find("/NetDetect/Start/Text").GetComponent<Text>();
+                    button.text = "主动结束";
+                    NetDetect = true;
+                    ExampleUtils.ShowToast("开始成功");
+                }
+                else
+                {
+                    ExampleUtils.ShowToast($"开始失败 code:{ret}");
+                }
+            }
+        }
+
+        public void OnClickCloseNetDetect()
+        {
+            if (NetDetect)
+            {
+                int ret = Engine.StopNetworkProbe();
+                if (ret == 0)
+                {
+                    Text button = GameObject.Find("/NetDetect/Start/Text").GetComponent<Text>();
+                    button.text = "开启探测";
+                    NetDetect = false;
+                    Engine.Destroy();
+                    Engine = null;
+                    ExampleUtils.ShowToast("停止成功");
+                }
+                else
+                {
+                    ExampleUtils.ShowToast("停止失败");
+                }
+            }
+            GameObject.Find("/NetDetect").SetActive(false);
+        }
+        #endregion
+
+        #region Metting
+        public void OnClickLeaveMeeting()
+        {
+            ExampleUtils.ShowLoading();
+            Engine.OnRoomLeft = delegate (int code, String message)
+            {
+                Engine.OnRoomLeft = null;
+
+                RunOnMainThread.Enqueue(() =>
+                {
+                    ExampleUtils.HideLoading();
+                    ChangeToConnected();
+                    if (code != 0)
+                    {
+                        ExampleUtils.ShowToast(message);
+                    }
+                    Engine.Destroy();
+                    Engine = null;
+                });
+            };
+            Engine.SetStatsListener(null);
+            Engine.LeaveRoom();
+
+            resetMeetingUI();
+        }
+
+        public void OnClickMeetingEnableMicrophoneSwitch()
+        {
+            if (!CheckMicrophonePermission())
+            {
+                ExampleUtils.ShowToast("没有麦克风权限");
+                return;
+            }
+#if UNITY_STANDALONE_WIN
+            RCRTCDevice[] list = Engine.GetMicrophoneList();
+            Debug.Log("获取到麦克风列表" + list.Length);
+            if (list.Length > 0)
+            {
+                ReloadDeviceList(list, CurrentMicrophones, true, true, (device, value) => {
+                    if (CurrentMicrophones.Contains(device))
+                    {
+                        if (!value)
+                        {
+                            Engine.EnableMicrophone(device, false, false);
+                        }
+                    }
+                    else
+                    {
+                        foreach (var item in CurrentMicrophones)
+                        {
+                            Engine.EnableMicrophone(item, false, false);
+                        }
+                        Engine.EnableMicrophone(device, value, true);
+                    }
+                    CurrentMicrophones.Clear();
+                    if (value)
+                    {
+                        CurrentMicrophones.Add(device);
+                    }
+                    /*
+                    if (value)
+                    {
+                        CurrentMicrophones.Add(device);
+                    }
+                    else
+                    {
+                        CurrentMicrophones.Remove(device);
+                    }*/
+                });
+            }
+            else
+            {
+                ExampleUtils.ShowToast("没有可用的麦克风");
+            }
+#else
+            int ret = Engine.EnableMicrophone(!Microphone);
+            if (ret == 0)
+            {
+                Microphone = !Microphone;
+                MeetingCanvasEnableMicrophoneSwitchInfo.text = Microphone ? "关闭麦克风" : "开启麦克风";
+            }
+#endif
+        }
+
+        public void OnClickMeetingEnableCameraSwitch()
+        {
+            bool? isEnabled = _enableCamera(MeetingVideoPanel.videoView);
+            if (isEnabled != null)
+            {
+                MeetingCanvasEnableCameraSwitchInfo.text = isEnabled.Value ? "关闭摄像头" : "开启摄像头";
+            }
+        }
+
+        public void OnClickMeetingPublishAudioSwitch()
+        {
+            ExampleUtils.ShowLoading();
+            if (!PublishAudio)
+            {
+                Engine.OnPublished = delegate (RCRTCMediaType type, int code, String message)
+                {
+                    Engine.OnPublished = null;
+
+                    RunOnMainThread.Enqueue(() =>
+                    {
+                        ExampleUtils.HideLoading();
+                        if (code != 0)
+                        {
+                            ExampleUtils.ShowToast(message);
+                        }
+                        else
+                        {
+                            PublishAudio = true;
+                            MeetingCanvasPublishAudioSwitchInfo.text = PublishAudio ? "取消发布音频" : "发布音频";
+                        }
+                    });
+                };
+
+                int ret = Engine.Publish(RCRTCMediaType.AUDIO);
+                if (ret != 0)
+                {
+#if UNITY_STANDALONE_WIN
+                    if (CurrentMicrophones.Count == 0)
+                    {
+                        RCRTCDevice[] list = Engine.GetMicrophoneList();
+                        if (list.Length == 0)
+                        {
+                            CurrentMicrophones = new List<RCRTCDevice> { list[0] };
+                        }
+                    }
+#endif
+                    ExampleUtils.HideLoading();
+                    ExampleUtils.ShowToast("Error " + ret);
+                }
+            }
+            else
+            {
+                Engine.OnUnpublished = delegate (RCRTCMediaType type, int code, String message)
+                {
+                    Engine.OnUnpublished = null;
+
+                    RunOnMainThread.Enqueue(() =>
+                    {
+                        ExampleUtils.HideLoading();
+                        if (code != 0)
+                        {
+                            ExampleUtils.ShowToast(message);
+                        }
+                        else
+                        {
+                            PublishAudio = false;
+                            MeetingCanvasPublishAudioSwitchInfo.text = PublishAudio ? "取消发布音频" : "发布音频";
+                            RemoveAudioStats(MeetingCanvasStatsTable);
+                        }
+                    });
+                };
+                int ret = Engine.Unpublish(RCRTCMediaType.AUDIO);
+                if (ret != 0)
+                {
+                    ExampleUtils.HideLoading();
+                    ExampleUtils.ShowToast("Error" + ret);
+                }
+            }
+        }
+
+        public void OnClickMeetingPublishVideo()
+        {
+            ExampleUtils.ShowLoading();
+            if (!PublishVideo)
+            {
+                Engine.OnPublished = delegate (RCRTCMediaType type, int code, String errMsg)
+                {
+                    RunOnMainThread.Enqueue(() =>
+                    {
+                        ExampleUtils.HideLoading();
+                        if (code != 0)
+                        {
+                            string toast = $"Publish video error: {errMsg}";
+                            ExampleUtils.ShowToast(toast);
+                        }
+                        else
+                        {
+                            PublishVideo = true;
+                            MeetingPublishVideoText.text = "取消发布视频";
+                        }
+                    });
+                };
+                int ret = Engine.Publish(RCRTCMediaType.VIDEO);
+                if (ret != 0)
+                {
+                    ExampleUtils.HideLoading();
+                    ExampleUtils.ShowToast("Error" + ret);
+                }
+                RCRTCVideoConfig config = MeetingVideoConfigPanel.VideoConfig;
+                Engine.SetVideoConfig(config);
+                Debug.Log($"SetVideoConfig {config}");
+            }
+            else
+            {
+                Engine.OnUnpublished = delegate (RCRTCMediaType type, int code, string msg)
+                {
+                    RunOnMainThread.Enqueue(() =>
+                    {
+                        ExampleUtils.HideLoading();
+                        if (code != 0)
+                        {
+                            string toast = $"UnPublish video error: {msg}";
+                            ExampleUtils.ShowToast(toast);
+                        }
+                        else
+                        {
+                            PublishVideo = false;
+                            MeetingPublishVideoText.text = "发布视频";
+                            RemoveVideoStats(MeetingCanvasStatsTable);
+                        }
+                    });
+                };
+                int ret = Engine.Unpublish(RCRTCMediaType.VIDEO);
+                if (ret != 0)
+                {
+                    ExampleUtils.HideLoading();
+                    ExampleUtils.ShowToast("Error" + ret);
+                }
+            }
+        }
+
+        public void OnClickMeetingVideoMirror(bool value)
+        {
+            MeetingVideoPanel.Mirror = value;
+        }
+
+        public void OnClickMeetingSwitchAudioOutput()
+        {
+#if UNITY_STANDALONE_WIN
+            RCRTCDevice[] list = Engine.GetSpeakerList();
+            Debug.Log("获取到扬声器列表" + list.Length);
+            if (list.Length > 0)
+            {
+                ReloadDeviceList(list, CurrentSpeakers, false, true, (device, value) => {
+                    if (CurrentSpeakers.Contains(device))
+                    {
+                        if (!value)
+                        {
+                            Engine.EnableSpeaker(device, false);
+                        }
+                    }
+                    else
+                    {
+                        foreach (var item in CurrentSpeakers)
+                        {
+                            Engine.EnableSpeaker(item, false);
+                        }
+                        Engine.EnableSpeaker(device, value);
+                    }
+                    CurrentSpeakers.Clear();
+                    if (value)
+                    {
+                        CurrentSpeakers.Add(device);
+                    }
+                    /*if (value)
+                    {
+                        CurrentSpeakers.Add(device);
+                    }
+                    else
+                    {
+                        CurrentSpeakers.Remove(device);
+                    }*/
+                });
+            }
+            else
+            {
+                ExampleUtils.ShowToast("没有可用的扬声器");
+            }
+#else
+            int ret = Engine.EnableSpeaker(!Speaker);
+            if (ret == 0)
+            {
+                Speaker = !Speaker;
+                MeetingCanvasSwitchAudioOutputInfo.text = Speaker ? "扬声器" : "听筒";
+            }
+#endif
+        }
+
+        public void OnClickMeetingAudioEffect()
+        {
+#if UNITY_STANDALONE_WIN
+            ExampleUtils.ShowToast("Windows 暂不支持此功能");
+            return;
+#endif
+            Engine.OnAudioEffectCreated = delegate (int id, int code, String message)
+            {
+                RunOnMainThread.Enqueue(() =>
+                {
+                    if (code != 0)
+                    {
+                        ExampleUtils.ShowToast("Create Audio Effect " + id + " Error: " + message);
+                    }
+                    else
+                    {
+                        AddAudioEffect(id);
+                    }
+                });
+            };
+            for (int i = 0; i < AudioEffectNames.Length; i++)
+            {
+                String file = String.Format(AudioEffectFilePathFormat, i);
+#if UNITY_ANDROID
+                String path = "file:///android_asset/" + file;
+#else
+                String path = Path.Combine(Application.streamingAssetsPath, file);
+#endif
+                int ret = Engine.CreateAudioEffect(path, i);
+                if (ret != 0)
+                {
+                    ExampleUtils.ShowToast("Create Audio Effect " + file + " Error " + ret);
+                }
+            }
+            AudioEffectCanvas.SetActive(true);
+        }
+
+        #endregion
+
+        #region Host 
+        public void OnClickLeaveHost()
+        {
+            ExampleUtils.ShowLoading();
+            Engine.OnRoomLeft = delegate (int code, String message)
+            {
+                Engine.OnRoomLeft = null;
+
+                RunOnMainThread.Enqueue(() =>
+                {
+                    ExampleUtils.HideLoading();
+                    ChangeToConnected();
+                    if (code != 0)
+                    {
+                        ExampleUtils.ShowToast(message);
+                    }
+                    Engine.Destroy();
+                    Engine = null;
+                });
+            };
+            Engine.SetStatsListener(null);
+            Engine.LeaveRoom();
+
+            resetHostUI();
+        }
+
+        public void OnClickHostEnableMicrophoneSwitch()
+        {
+            if (!CheckMicrophonePermission())
+            {
+                ExampleUtils.ShowToast("没有麦克风权限");
+                return;
+            }
+#if UNITY_STANDALONE_WIN
+            RCRTCDevice[] list = Engine.GetMicrophoneList();
+            Debug.Log("获取到麦克风列表" + list.Length);
+            if (list.Length > 0)
+            {
+                ReloadDeviceList(list, CurrentMicrophones, false, true, (device, value) => {
+                    if (CurrentMicrophones.Contains(device))
+                    {
+                        if (!value)
+                        {
+                            Engine.EnableMicrophone(device, false, false);
+                        }
+                    }
+                    else
+                    {
+                        foreach (var item in CurrentMicrophones)
+                        {
+                            Engine.EnableMicrophone(item, false, false);
+                        }
+                        Engine.EnableMicrophone(device, value, true);
+                    }
+                    CurrentMicrophones.Clear();
+                    if (value)
+                    {
+                        CurrentMicrophones.Add(device);
+                    }
+                    /*if (value)
+                    {
+                        CurrentMicrophones.Add(device);
+                    }
+                    else
+                    {
+                        CurrentMicrophones.Remove(device);
+                    }*/
+                });
+            }
+            else
+            {
+                ExampleUtils.ShowToast("没有可用的麦克风");
+            }
+#else
+            int ret = Engine.EnableMicrophone(!Microphone);
+            if (ret == 0)
+            {
+                Microphone = !Microphone;
+                HostCanvasEnableMicrophoneSwitchInfo.text = Microphone ? "关闭麦克风" : "开启麦克风";
+            }
+#endif
+        }
+
+        public void OnClickHostPublishAudioSwitch()
+        {
+            ExampleUtils.ShowLoading();
+            if (!PublishAudio)
+            {
+                Engine.OnPublished = delegate (RCRTCMediaType type, int code, String message)
+                {
+                    Engine.OnPublished = null;
+
+                    RunOnMainThread.Enqueue(() =>
+                    {
+                        ExampleUtils.HideLoading();
+                        if (code != 0)
+                        {
+                            ExampleUtils.ShowToast(message);
+                        }
+                        else
+                        {
+                            PublishAudio = true;
+                            HostCanvasPublishAudioSwitchInfo.text = PublishAudio ? "取消发布音频" : "发布音频";
+                        }
+                    });
+                };
+                int ret = Engine.Publish(RCRTCMediaType.AUDIO);
+                if (ret != 0)
+                {
+                    ExampleUtils.HideLoading();
+                    ExampleUtils.ShowToast("Error " + ret);
+                }
+            }
+            else
+            {
+                Engine.OnUnpublished = delegate (RCRTCMediaType type, int code, String message)
+                {
+                    Engine.OnUnpublished = null;
+
+                    RunOnMainThread.Enqueue(() =>
+                    {
+                        ExampleUtils.HideLoading();
+                        if (code != 0)
+                        {
+                            ExampleUtils.ShowToast(message);
+                        }
+                        else
+                        {
+                            PublishAudio = false;
+                            HostCanvasPublishAudioSwitchInfo.text = PublishAudio ? "取消发布音频" : "发布音频";
+                            RemoveAudioStats(HostCanvasStatsTable);
+                        }
+                    });
+                };
+                int ret = Engine.Unpublish(RCRTCMediaType.AUDIO);
+                if (ret != 0)
+                {
+                    ExampleUtils.HideLoading();
+                    ExampleUtils.ShowToast("Error" + ret);
+                }
+            }
+        }
+
+        public void OnClickHostSwitchAudioOutput()
+        {
+#if UNITY_STANDALONE_WIN
+            RCRTCDevice[] list = Engine.GetSpeakerList();
+            Debug.Log("获取到扬声器列表" + list.Length);
+            if (list.Length > 0)
+            {
+                ReloadDeviceList(list, CurrentSpeakers, false, true, (device, value) => {
+                    if (CurrentSpeakers.Contains(device))
+                    {
+                        if (!value)
+                        {
+                            Engine.EnableSpeaker(device, false);
+                        }
+                    }
+                    else
+                    {
+                        foreach (var item in CurrentSpeakers)
+                        {
+                            Engine.EnableSpeaker(item, false);
+                        }
+                        Engine.EnableSpeaker(device, value);
+                    }
+                    CurrentSpeakers.Clear();
+                    if (value)
+                    {
+                        CurrentSpeakers.Add(device);
+                    }
+                    /*if (value)
+                    {
+                        CurrentSpeakers.Add(device);
+                    }
+                    else
+                    {
+                        CurrentSpeakers.Remove(device);
+                    }*/
+                });
+            }
+            else
+            {
+                ExampleUtils.ShowToast("没有可用的扬声器");
+            }
+#else
+            int ret = Engine.EnableSpeaker(!Speaker);
+            if (ret == 0)
+            {
+                Speaker = !Speaker;
+                HostCanvasSwitchAudioOutputInfo.text = Speaker ? "扬声器" : "听筒";
+            }
+#endif
+        }
+
+        public void OnClickHostEnableCameraSwitch()
+        {
+            bool? isEnabled = _enableCamera(HostVideoPanel.videoView);
+            if (isEnabled != null)
+            {
+                HostCanvasEnableCameraSwitchInfo.text = isEnabled.Value ? "关闭摄像头" : "开启摄像头";
+            }
+        }
+
+        public void OnClickHostPublishVideo()
+        {
+            ExampleUtils.ShowLoading();
+            if (!PublishVideo)
+            {
+                Engine.OnPublished = delegate (RCRTCMediaType type, int code, String errMsg)
+                {
+                    RunOnMainThread.Enqueue(() =>
+                    {
+                        ExampleUtils.HideLoading();
+                        if (code != 0)
+                        {
+                            string toast = $"Publish video error: {errMsg}";
+                            ExampleUtils.ShowToast(toast);
+                        }
+                        else
+                        {
+                            PublishVideo = true;
+                            HostPublishVideoText.text = "取消发布视频";
+                        }
+                    });
+                };
+                int ret = Engine.Publish(RCRTCMediaType.VIDEO);
+                if (ret != 0)
+                {
+                    ExampleUtils.HideLoading();
+                    ExampleUtils.ShowToast("Error" + ret);
+                }
+                RCRTCVideoConfig config = HostVideoConfigPanel.VideoConfig;
+                Engine.SetVideoConfig(config);
+                Debug.Log($"SetVideoConfig {config}");
+            }
+            else
+            {
+                Engine.OnUnpublished = delegate (RCRTCMediaType type, int code, string msg)
+                {
+                    RunOnMainThread.Enqueue(() =>
+                    {
+                        ExampleUtils.HideLoading();
+                        if (code != 0)
+                        {
+                            string toast = $"UnPublish video error: {msg}";
+                            ExampleUtils.ShowToast(toast);
+                        }
+                        else
+                        {
+                            PublishVideo = false;
+                            HostPublishVideoText.text = "发布视频";
+                            RemoveVideoStats(HostCanvasStatsTable);
+                        }
+                    });
+                };
+                int ret = Engine.Unpublish(RCRTCMediaType.VIDEO);
+                if (ret != 0)
+                {
+                    ExampleUtils.HideLoading();
+                    ExampleUtils.ShowToast("Error" + ret);
+                }
+            }
+        }
+
+        public void OnClickHostVideoMirror(bool value)
+        {
+            HostVideoPanel.Mirror = value;
+        }
+
+        private string filePath;
+
+        public void OnClickHostCustomStreamFile()
+        {
+            ExampleUtils.PickVideo((path, dur) =>
+            {
+                if (path != null)
+                {
+                    filePath = path;
+                    GameObject.Find("/Host/CustomStream/Text").GetComponent<Text>().text = $"已选文件：{path}";
+                }
+                else
+                {
+                    GameObject.Find("/Host/CustomStream/Text").GetComponent<Text>().text = "已选文件：";
+                }
+            });
+        }
+
+        public void OnClickHostCustomStreamPublish()
+        {
+            if (PublishCustomStream)
+            {
+                Engine.OnCustomStreamUnpublished = delegate (string tag, int code, string msg) {
+                    Engine.OnCustomStreamUnpublished = null;
+                    RunOnMainThread.Enqueue(() =>
+                    {
+                        if (code == 0)
+                        {
+                            Engine.RemoveLocalCustomStreamView(StreamTag());
+                            ExampleUtils.ShowToast("取消发布成功");
+                        }
+                        else
+                        {
+                            ExampleUtils.ShowToast($"取消发布失败 code:{code}-message:{msg}");
+                        }
+                    });
+                };
+                int ret = Engine.UnpublishCustomStream(StreamTag());
+                if (ret != 0)
+                {
+                    ExampleUtils.ShowToast($"取消发布自定义流错误 code:{ret}");
+                }
+            }
+            else
+            {
+                if (filePath == null)
+                {
+                    ExampleUtils.ShowToast("先选择文件");
+                    return;
+                }
+                int ret = Engine.CreateCustomStreamFromFile(filePath, StreamTag(), false, false);
+                if (ret != 0)
+                {
+                    ExampleUtils.ShowToast($"创建自定义流失败 code:{ret}");
+                    return;
+                }
+                Engine.OnCustomStreamPublished = delegate (string tag, int code, string msg) {
+                    Engine.OnCustomStreamPublished = null;
+                    RunOnMainThread.Enqueue(() => {
+                        ExampleUtils.HideLoading();
+                        if (code == 0)
+                        {
+                            RCRTCView view = HostCanvas.transform.Find("CustomStream/Panel").GetComponent<RCRTCView>();
+                            Engine.SetLocalCustomStreamView(StreamTag(), view);
+                            ExampleUtils.ShowToast("发布成功");
+                        }
+                        else
+                        {
+                            ExampleUtils.ShowToast($"发布失败 code:{code}-message:{msg}");
+                        }
+                    });
+                };
+                ExampleUtils.ShowLoading();
+                var publishCode = Engine.PublishCustomStream(StreamTag());
+                if (publishCode != 0)
+                {
+                    ExampleUtils.HideLoading();
+                    ExampleUtils.ShowToast($"发布自定义流错误 code:{publishCode}");
+                }
+            }
+        }
+        #endregion
+
+        #region Host More
+        public void AddThirdCDN()
+        {
+
+            if (CDNs.Values.Count > 0)
+            {
+                ConfigCDNCanvasDialog.SetActive(true);
+            }
+            else
+            {
+                LoadCDNs();
+            }
+        }
+
+        private bool InnerCDN;
+
+        public void OnClickInnerCDN()
+        {
+            if (!PublishVideo)
+            {
+                ExampleUtils.ShowToast("请先发布视频资源");
+                return;
+            }
+            int ret = Engine.EnableLiveMixInnerCdnStream(!InnerCDN);
+            if (ret == 0)
+            {
+                InnerCDN = !InnerCDN;
+                string text = InnerCDN ? "关闭融云内置CDN" : "开启融云内置CDN";
+                GameObject.Find("/Host/MorePanel/List/InnerCDN/Text").GetComponent<Text>().text = text;
+                ExampleUtils.ShowToast("设置成功");
+            }
+            else
+            {
+                ExampleUtils.ShowToast($"设置失败 code:{ret}");
+            }
+        }
+
+        public void OnWaterMarkXChange(float value)
+        {
+            GameObject.Find("/WaterMark/x/Value").GetComponent<Text>().text = value.ToString();
+        }
+
+        public void OnWaterMarkYChange(float value)
+        {
+            GameObject.Find("/WaterMark/y/Value").GetComponent<Text>().text = value.ToString();
+        }
+
+        public void OnWaterMarkZoomChange(float value)
+        {
+            GameObject.Find("/WaterMark/zoom/Value").GetComponent<Text>().text = value.ToString();
+        }
+
+        public void AddVideoMask()
+        {
+            float x = GameObject.Find("/WaterMark/x").GetComponent<Slider>().value;
+            float y = GameObject.Find("/WaterMark/y").GetComponent<Slider>().value;
+            float zoom = GameObject.Find("/WaterMark/zoom").GetComponent<Slider>().value;
+            ExampleUtils.PickImage((string path) => {
+                if (path != null && path.Length > 0)
+                {
+                    int ret = Engine.SetWatermark(path, x, y, zoom);
+                    if (ret == 0)
+                    {
+                        ExampleUtils.ShowToast("添加水印成功");
+                    }
+                    else
+                    {
+                        ExampleUtils.ShowToast("添加水印失败");
+                    }
+                }
+            });
+        }
+
+        public void RemoveVideoMask()
+        {
+            int ret = Engine.RemoveWatermark();
+            if (ret == 0)
+            {
+                ExampleUtils.ShowToast("移除水印成功");
+            }
+            else
+            {
+                ExampleUtils.ShowToast("移除水印失败");
+            }
+        }
+
+        public void OnClickJoinSubRoom()
+        {
+            string roomId = SubRoomCanvas.transform.Find("Room").GetComponent<InputField>().text;
+            string userId = SubRoomCanvas.transform.Find("User").GetComponent<InputField>().text;
+            if (roomId.Length == 0 || userId.Length == 0)
+            {
+                ExampleUtils.ShowToast("请输入房间ID和用户ID");
+                return;
+            }
+            int ret = Engine.RequestJoinSubRoom(roomId, userId, true, null);
+            if (ret == 0)
+            {
+                ExampleUtils.ShowToast("申请已发出，等待对方处理");
+            }
+            else
+            {
+                ExampleUtils.ShowToast($"申请发生错误 code:{ret}");
+            }
+        }
+
+        private bool Sei;
+        private int SeiCount;
+        private int SeiCountDown;
+        private string SeiText;
+        private float SeiDeltaTime;
+
+        public void OnClickSEI(bool value)
+        {
+            Engine.OnSeiEnabled = delegate (bool enable, int code, string errMsg)
+            {
+                Engine.OnSeiEnabled = null;
+                RunOnMainThread.Enqueue(() =>
+                {
+                    if (code != 0)
+                    {
+                        ExampleUtils.ShowToast($"enableSei error code:{code} msg:{errMsg}");
+                    }
+                });
+            };
+            int ret = Engine.EnableSei(value);
+            if (ret != 0)
+            {
+                Engine.OnSeiEnabled = null;
+                ExampleUtils.ShowToast($"enableSei error code:{ret}");
+            }
+        }
+
+        public void OnSendSEI()
+        {
+            if (!GameObject.Find("SEI/Switch").GetComponent<Toggle>().isOn)
+            {
+                ExampleUtils.ShowToast("请先开启SEI");
+                return;
+            }
+            if (!Sei)
+            {
+                string content = SeiCanvas.transform.Find("Content").GetComponent<InputField>().text;
+                if (content == null || content.Length == 0)
+                {
+                    ExampleUtils.ShowToast("请输入内容");
+                    return;
+                }
+                string count = SeiCanvas.transform.Find("Count").GetComponent<InputField>().text;
+                if (count == null || count.Length == 0)
+                {
+                    ExampleUtils.ShowToast("请输入次数");
+                    return;
+                }
+                SeiText = content;
+                SeiCount = int.Parse(count);
+                SeiDeltaTime = 0;
+                SeiCountDown = 0;
+            }
+            string text = Sei ? "发送" : "取消发送";
+            SeiCanvas.transform.Find("Start/Text").GetComponent<Text>().text = text;
+            Sei = !Sei;
+        }
+
+        public void OnClickSwitchRole()
+        {
+            Engine.OnLiveRoleSwitched = delegate (RCRTCRole current, int code, string errMsg)
+            {
+                Engine.OnLiveRoleSwitched = null;
+                RunOnMainThread.Enqueue(() =>
+                {
+                    ExampleUtils.HideLoading();
+                    if (code != 0)
+                    {
+                        ExampleUtils.ShowToast($"切换失败 code:{code} msg:{errMsg}");
+                    }
+                    else
+                    {
+                        GameObject.Find("Host/MorePanel").SetActive(false);
+                        if (Camera)
+                        {
+                            _enableCamera(HostVideoPanel.videoView);
+                        }
+                        SwitchRole(current);
+                    }
+                });
+            };
+            ExampleUtils.ShowLoading();
+            int ret = Engine.SwitchLiveRole(RCRTCRole.LIVE_AUDIENCE);
+            if (ret != 0)
+            {
+                ExampleUtils.HideLoading();
+                Engine.OnLiveRoleSwitched = null;
+                ExampleUtils.ShowToast($"切换失败 code:{ret}");
+            }
+        }
+        #endregion
+
+        #region 合流布局面板
+        public void OnHostMixVideoBgChanged(int value)
+        {
+            HostMixBgConfig.SetActive(false);
+            int color = 0;
+            switch (value)
+            {
+                case 0://red
+                    color = 0xDC143C;
+                    break;
+                case 1://green
+                    color = 0x008000;
+                    break;
+                case 2://blue
+                    color = 0x0000FF;
+                    break;
+                case 3://org
+                    color = 0xFF4500;
+                    break;
+                case 4://yellow
+                    color = 0xFFFF00;
+                    break;
+                default:
+                    break;
+            }
+            int ret = Engine.SetLiveMixBackgroundColor(color);
+            if (ret == 0)
+            {
+                ExampleUtils.ShowToast("设置成功");
+            }
+            else
+            {
+                ExampleUtils.ShowToast("设置失败");
+            }
+        }
+
+        public void OnHostMixVideoCustomModeChanged(bool value)
+        {
+            if (value)
+            {
                 HostMixVideoCustomLayoutConfig.SetActive(true);
-                Engine?.SetLiveMixLayoutMode(RCRTCLiveMixLayoutMode.CUSTOM);
             }
         }
 
-        public void OnHostMixVideoModeFloatSelectStateChanged(bool selected)
+        public void OnHostMixVideoModeChanged(int value)
         {
-            if (selected)
-            {
-                Engine?.SetLiveMixLayoutMode(RCRTCLiveMixLayoutMode.SUSPENSION);
-            }
+            RCRTCLiveMixLayoutMode mode = (RCRTCLiveMixLayoutMode)value;
+            Engine?.SetLiveMixLayoutMode(mode);
         }
 
-        public void OnHostMixVideoModeAutoSelectStateChanged(bool selected)
+        public void OnHostMixVideoRenderModeChanged(int value)
         {
-            if (selected)
-            {
-                Engine?.SetLiveMixLayoutMode(RCRTCLiveMixLayoutMode.ADAPTIVE);
-            }
-        }
-
-        public void OnHostMixVideoRenderModeWholeSelectStateChanged(bool selected)
-        {
-            if (selected)
-            {
-                Engine?.SetLiveMixRenderMode(RCRTCLiveMixRenderMode.WHOLE);
-            }
-        }
-
-        public void OnHostMixVideoRenderModeCropSelectStateChanged(bool selected)
-        {
-            if (selected)
-            {
-                Engine?.SetLiveMixRenderMode(RCRTCLiveMixRenderMode.CROP);
-            }
-        }
-        public void OnClickHostLiveMixVideoStreamConfig()
-        {
-            HostMixConfig.SetActive(false);
-            HostMixVideoStreamConfig.SetActive(true);
-        }
-
-        public void OnClickHostLiveMixVideoStreamClose()
-        {
-            HostMixVideoStreamConfig.SetActive(false);
-            HostMixConfig.SetActive(true);
+            Engine?.SetLiveMixRenderMode((RCRTCLiveMixRenderMode)value);
         }
 
         public void OnClickHostVideoStreamConfigConfirm()
@@ -308,21 +1633,8 @@ namespace cn_rongcloud_rtc_unity_example
             Engine?.SetLiveMixVideoFps(config.FPS, false);
             Engine?.SetLiveMixVideoResolution(GetResolutionWidth(config.Resolution),
                 GetResolutionHeight(config.Resolution), false);
-            
-            HostMixVideoStreamConfig.SetActive(false);
-            HostMixConfig.SetActive(true);
-        }
 
-        public void OnClickHostVideoStreamConfigCancel()
-        {
             HostMixVideoStreamConfig.SetActive(false);
-            HostMixConfig.SetActive(true);
-        }
-        
-        public void OnClickHostTinyVideoStreamConfig()
-        {
-            HostMixConfig.SetActive(false);
-            HostMixTinyVideoStreamConfig.SetActive(true);
         }
 
         public void OnClickHostTinyVideoStreamConfigConfirm()
@@ -335,61 +1647,36 @@ namespace cn_rongcloud_rtc_unity_example
             Engine?.SetLiveMixVideoResolution(GetResolutionWidth(config.Resolution),
                 GetResolutionHeight(config.Resolution), true);
 
-            HostMixConfig.SetActive(true);
-            HostMixTinyVideoStreamConfig.SetActive(false);
-        }
-
-        public void OnClickHostTinyVideoStreamConfigCancel()
-        {
-            HostMixConfig.SetActive(true);
             HostMixTinyVideoStreamConfig.SetActive(false);
         }
 
         public void OnClickHostVideoCustomLayoutConfig()
         {
-            HostMixConfig.SetActive(false);
-            HostMixVideoCustomLayoutConfig.SetActive(true); 
+            HostMixVideoCustomLayoutConfig.SetActive(true);
             RefreshCustomVideoLayoutList();
         }
-        
+
         public void OnClickHostVideoCustomLayoutConfigConfirm()
         {
+            Engine?.SetLiveMixLayoutMode(RCRTCLiveMixLayoutMode.CUSTOM);
             Engine?.SetLiveMixCustomLayouts(_videoCustomLayouts);
-            HostMixConfig.SetActive(true);
-            HostMixVideoCustomLayoutConfig.SetActive(false);
-        }
-
-        public void OnClickHostVideoCustomLayoutConfigCancel()
-        {
-            HostMixConfig.SetActive(true);
             HostMixVideoCustomLayoutConfig.SetActive(false);
         }
 
         public void OnClickHostVideoCustomLayoutAdd()
         {
-            HostMixVideoCustomLayoutConfig.SetActive(false);
             HostMixAddVideoCustomLayout.SetActive(true);
 
             var userOptions = GameObject
                 .Find("/HostMixAddVideoCustomLayout/Background/SelectUserDropdown").GetComponent<Dropdown>();
             OnSelectUserDropdownValueChanged(0);
             userOptions.options.Clear();
-            var optionDatas = new List<Dropdown.OptionData> {new Dropdown.OptionData(RCIMClient.Instance.GetCurrentUserID())};
+            var optionDatas = new List<Dropdown.OptionData> { new Dropdown.OptionData(User.Id) };
             optionDatas.AddRange(Users.Select(item => new Dropdown.OptionData(item.Key)));
-            
+
             userOptions.AddOptions(optionDatas);
             userOptions.SetValueWithoutNotify(0);
         }
-
-        #region 自定义视频合流布局
-
-        public GameObject CustomVideoLayoutList;
-        public GameObject CustomVideoLayoutListItem;
-        
-        private readonly IList<RCRTCCustomLayout> _videoCustomLayouts = new List<RCRTCCustomLayout>();
-
-        private IList<GameObject> _videoCustomLayoutsGameObjects = new List<GameObject>();
-
 
         public void OnSelectUserDropdownValueChanged(int value)
         {
@@ -444,81 +1731,12 @@ namespace cn_rongcloud_rtc_unity_example
             {
                 return;
             }
-            
+
             _videoCustomLayouts.Add(new RCRTCCustomLayout(selectedUserId, videoPosX, videoPosY, videoWidth, videoHeight));
 
             HostMixAddVideoCustomLayout.SetActive(false);
             HostMixVideoCustomLayoutConfig.SetActive(true);
             RefreshCustomVideoLayoutList();
-        }
-
-        private void RefreshCustomVideoLayoutList()
-        {
-            RunOnMainThread.Enqueue(() =>
-            {
-                CustomVideoLayoutList =
-                    GameObject.Find("/HostMixVideoCustomLayoutConfig/Background/CustomVideoLayoutConfigList/Viewport/Content");
-
-                var customVideoLayoutListItems =
-                    (from Transform child in CustomVideoLayoutList.transform select child.gameObject).ToList();
-                customVideoLayoutListItems.ForEach(Destroy);
-                _videoCustomLayoutsGameObjects.Clear();
-
-                if (_videoCustomLayouts == null || _videoCustomLayouts.Count == 0)
-                    return;
-
-                foreach (var item in _videoCustomLayouts)
-                {
-                    AddCustomVideoLayoutListItem(item);
-                }
-            });
-        }
-
-        private void AddCustomVideoLayoutListItem(RCRTCCustomLayout layout)
-        {
-            if (layout == null)
-                return;
-
-            GameObject item =
-                GameObject.Instantiate(CustomVideoLayoutListItem, CustomVideoLayoutList.transform) as GameObject;
-            item.transform.Find("LayoutInfo").GetComponent<Text>().text =
-                $" User: {layout.GetUserId()} {Environment.NewLine} Position: [{layout.GetX()}, {layout.GetY()}] Width: {layout.GetWidth()} Height: {layout.GetHeight()}";
-            item.transform.Find("Remove").GetComponent<Button>().onClick.AddListener(() =>
-            {
-                _videoCustomLayouts.Remove(layout);
-                RefreshCustomVideoLayoutList();
-            });
-            
-            RectTransform rect = CustomVideoLayoutList.GetComponent<RectTransform>();
-            RectTransform current = item.GetComponent<RectTransform>();
-            if (_videoCustomLayoutsGameObjects.Count > 0)
-            {
-                RectTransform last = CustomVideoLayoutList.transform.GetChild(_videoCustomLayoutsGameObjects.Count - 1)
-                    .gameObject
-                    .GetComponent<RectTransform>();
-                item.GetComponent<RectTransform>().localPosition = new Vector3(last.localPosition.x,
-                    last.localPosition.y - last.rect.height - 10, last.localPosition.z);
-                rect.sizeDelta = new Vector2(rect.sizeDelta.x, rect.rect.height + current.rect.height + 10);
-            }
-            else
-            {
-                rect.sizeDelta = new Vector2(rect.sizeDelta.x, current.rect.height);
-            }
-
-            _videoCustomLayoutsGameObjects.Add(item);
-        }
-
-        #endregion
-        
-        public void OnClickHostVideoCustomLayoutAddCancel()
-        {
-            HostMixAddVideoCustomLayout.SetActive(false);
-            HostMixVideoCustomLayoutConfig.SetActive(true);
-        }
-        public void OnClickHostAudioConfig()
-        {
-            HostMixConfig.SetActive(false);
-            HostMixAudioConfig.SetActive(true);
         }
 
         public void OnClickHostAudioConfigConfirm()
@@ -528,99 +1746,11 @@ namespace cn_rongcloud_rtc_unity_example
             if (liveMixAudioConfig == null)
                 return;
             Engine?.SetLiveMixAudioBitrate(liveMixAudioConfig.BitRateValue);
-            HostMixConfig.SetActive(true);
             HostMixAudioConfig.SetActive(false);
         }
-
-        public void OnClickHostAudioConfigCancel()
-        {
-            HostMixConfig.SetActive(true);
-            HostMixAudioConfig.SetActive(false);
-        }
-
-        #region 自定义音频合流
-
-        public GameObject CustomAudioMixList;
-        public GameObject CustomAudioMixListItem;
-        
-        private readonly IList<String> _audioMixUserList = new List<String>();
-
-        private IList<GameObject> _audioMixUserListsGameObjects = new List<GameObject>();
-        public void OnClickHostLiveMixAddAudioMixUser()
-        {
-            var userOptions = GameObject
-                .Find("/HostMixAudioCustomConfig/Background/SelectUserDropdown").GetComponent<Dropdown>();
-            var selectedValue = userOptions.value;
-            if (userOptions.options.Count == 0)
-                return;
-            var selectedUserId = userOptions.options[selectedValue].text;
-
-            _audioMixUserList.Add(selectedUserId);
-
-            RefreshCustomAudioMixUserList();
-        }
-
-        private void RefreshCustomAudioMixUserList()
-        {
-            RunOnMainThread.Enqueue(() =>
-            {
-                CustomAudioMixList =
-                    GameObject.Find("/HostMixAudioCustomConfig/Background/CustomLiveMixAudioUserList/Viewport/Content");
-
-                var customVideoLayoutListItems =
-                    (from Transform child in CustomAudioMixList.transform select child.gameObject).ToList();
-                customVideoLayoutListItems.ForEach(Destroy);
-                _audioMixUserListsGameObjects.Clear();
-
-                if (_audioMixUserList == null || _audioMixUserList.Count == 0)
-                    return;
-
-                foreach (var item in _audioMixUserList)
-                {
-                    AddCustomAudioMixUserListItem(item);
-                }
-            });
-        }
-
-        private void AddCustomAudioMixUserListItem(string audioMixUser)
-        {
-            if ( String.IsNullOrEmpty(audioMixUser))
-                return;
-
-            GameObject item =
-                GameObject.Instantiate(CustomAudioMixListItem, CustomAudioMixList.transform) as GameObject;
-            item.transform.Find("LayoutInfo").GetComponent<Text>().text =
-                $" User: {audioMixUser}";
-            item.transform.Find("Remove").GetComponent<Button>().onClick.AddListener(() =>
-            {
-                _audioMixUserList.Remove(audioMixUser);
-                RefreshCustomAudioMixUserList();
-            });
-            
-            RectTransform rect = CustomAudioMixList.GetComponent<RectTransform>();
-            RectTransform current = item.GetComponent<RectTransform>();
-            if (_audioMixUserListsGameObjects.Count > 0)
-            {
-                RectTransform last = CustomAudioMixList.transform.GetChild(_audioMixUserListsGameObjects.Count - 1)
-                    .gameObject
-                    .GetComponent<RectTransform>();
-                item.GetComponent<RectTransform>().localPosition = new Vector3(last.localPosition.x,
-                    last.localPosition.y - last.rect.height - 10, last.localPosition.z);
-                rect.sizeDelta = new Vector2(rect.sizeDelta.x, rect.rect.height + current.rect.height + 10);
-            }
-            else
-            {
-                rect.sizeDelta = new Vector2(rect.sizeDelta.x, current.rect.height);
-            }
-
-            _audioMixUserListsGameObjects.Add(item);
-        }
-
-        #endregion
 
         public void OnClickHostAudioCustomConfig()
         {
-            HostMixConfig.SetActive(false);
             HostMixAudioCustomConfig.SetActive(true);
 
             var userOptions = GameObject
@@ -629,7 +1759,7 @@ namespace cn_rongcloud_rtc_unity_example
             userOptions.options.Clear();
             var optionDatas = new List<Dropdown.OptionData>()
             {
-                new Dropdown.OptionData(RCIMClient.Instance.GetCurrentUserID())
+                new Dropdown.OptionData(User.Id)
             };
             optionDatas.AddRange(Users.Select(item => new Dropdown.OptionData(item.Key)));
 
@@ -644,917 +1774,139 @@ namespace cn_rongcloud_rtc_unity_example
 
             Engine?.SetLiveMixCustomAudios(mixUserList);
 
-            HostMixConfig.SetActive(true);
             HostMixAudioCustomConfig.SetActive(false);
         }
 
-        public void OnClickHostAudioCustomConfigCancel()
+        public void OnClickHostLiveMixAddAudioMixUser()
         {
-            HostMixConfig.SetActive(true);
-            HostMixAudioCustomConfig.SetActive(false);
-        }
-        
-        public void OnClickConnect()
-        {
-            if (Connected)
-            {
-                RCIMClient.Instance.Disconnect();
-                ChangeToUnconnect();
-            }
-            else
-            {
-                if (String.IsNullOrEmpty(ConnectCanvasTokenInput.text))
-                {
-                    ShowToast("请输入Token!");
-                    return;
-                }
-
-                ConnectIM(ConnectCanvasTokenInput.text);  
-            }
-        }
-
-        public void OnClickGenerate()
-        {
-            CheckConfigInput();
-            GenerateTokenAndLogin(false);
-        }
-
-        private void CheckConfigInput()
-        {
-            if (!string.IsNullOrEmpty(ConnectCanvasAppKeyInput.text))
-            {
-                ExampleConfig.AppKey = ConnectCanvasAppKeyInput.text;
-            }
-
-            if (!string.IsNullOrEmpty(ConnectCanvasNaviServerInput.text))
-            {
-                ExampleConfig.NavServer = ConnectCanvasNaviServerInput.text;
-            }
-                
-            if (!string.IsNullOrEmpty(ConnectCanvasFileServerInput.text))
-            {
-                ExampleConfig.FileServer = ConnectCanvasFileServerInput.text;
-            }
-                
-            if (!string.IsNullOrEmpty(ConnectCanvasMediaServerInput.text))
-            {
-                ExampleConfig.MediaServer = ConnectCanvasMediaServerInput.text;
-            }
-            
-        }
-
-        public void OnMeetingModeSelectStateChanged(bool selected)
-        {
-            if (selected)
-            {
-                Role = RCRTCRole.MEETING_MEMBER;
-                ConnectedCanvasJoinText.text = "加入会议";
-                ConnectedRoomStreamConfig.SetRoomMode(RoomStreamConfigPrefab.RoomMode.MeetingRoom);
-            }
-        }
-
-        public void OnHostModeSelectStateChanged(bool selected)
-        {
-            if (selected)
-            {
-                Role = RCRTCRole.LIVE_BROADCASTER;
-                ConnectedCanvasJoinText.text = "开始直播";
-                ConnectedRoomStreamConfig.SetRoomMode(RoomStreamConfigPrefab.RoomMode.HostRoom); 
-            }
-        }
-
-        public void OnAudienceModeSelectStateChanged(bool selected)
-        {
-            if (selected)
-            {
-                Role = RCRTCRole.LIVE_AUDIENCE;
-                ConnectedCanvasJoinText.text = "观看直播";
-                ConnectedRoomStreamConfig.SetRoomMode(RoomStreamConfigPrefab.RoomMode.AudienceRoom);
-                
-            }
-        }
-
-        public void OnRoomIdChanged(String id)
-        {
-            RoomId = id;
-        }
-
-        public void OnClickJoin()
-        {
-            if (String.IsNullOrEmpty(RoomId))
-            {
-                ShowToast("房间号不能为空！");
+            var userOptions = GameObject
+                .Find("/HostMixAudioCustomConfig/Background/SelectUserDropdown").GetComponent<Dropdown>();
+            var selectedValue = userOptions.value;
+            if (userOptions.options.Count == 0)
                 return;
-            }
+            var selectedUserId = userOptions.options[selectedValue].text;
 
-            ShowLoading();
-            RCRTCRoomSetup.Builder roomSetupBuilder = RCRTCRoomSetup.Builder.Create();
-            RCRTCEngineSetup.Builder engineSetupBuilder = RCRTCEngineSetup.Builder.Create();
-            RCRTCVideoSetup.Builder videoSetupBuilder = RCRTCVideoSetup.Builder.Create();
-       
-            switch (Role)
-            {
-                case RCRTCRole.MEETING_MEMBER:
-                    engineSetupBuilder.WithEnableSRTP(ConnectedRoomStreamConfig.SrtpEnabled);
-                    videoSetupBuilder.WithEnableTinyStream(ConnectedRoomStreamConfig.TinyEnabled);
-                    break;
-                case RCRTCRole.LIVE_BROADCASTER:
-                    RCRTCMediaType mediaType = RCRTCMediaType.AUDIO_VIDEO;
-                    if (ConnectedRoomStreamConfig.AudioOnlyMode)
-                    {
-                        mediaType = RCRTCMediaType.AUDIO;
-                    }
-                    
-                    roomSetupBuilder.WithMediaType(mediaType);
-                    videoSetupBuilder.WithEnableTinyStream(ConnectedRoomStreamConfig.TinyEnabled);
-                    engineSetupBuilder.WithEnableSRTP(ConnectedRoomStreamConfig.SrtpEnabled);
-                    break;
-                case RCRTCRole.LIVE_AUDIENCE:
-                    engineSetupBuilder.WithEnableSRTP(ConnectedRoomStreamConfig.SrtpEnabled);
-                    break;
-            }
+            _audioMixUserList.Add(selectedUserId);
 
-            engineSetupBuilder.WithVideoSetup(videoSetupBuilder.Build());
-#if UNITY_STANDALONE_WIN
-            Engine = RCRTCEngine.Create(engineSetupBuilder.Build(), RCIMClient.Instance.Handler());
-            Engine.OnCameraListChanged = OnCameraLiseChange;
-            Engine.OnMicrophoneListChanged = OnMicrophoneLiseChange;
-            Engine.OnSpeakerListChanged = OnSpeakerLiseChange;
-            Engine.OnCameraSwitched = OnCameraChange;
-#else
-            Engine = RCRTCEngine.Create(engineSetupBuilder.Build());
-            Engine.OnCameraSwitched = OnCameraChange;
-#endif
-
-            switch (Role)
-            {
-                case RCRTCRole.MEETING_MEMBER:
-                    Engine.OnUserJoined = MeetingOnUserJoined;
-                    Engine.OnUserOffline = MeetingOnUserOffline;
-                    Engine.OnUserLeft = MeetingOnUserLeft;
-
-                    Engine.OnRemotePublished = MeetingOnRemotePublished;
-                    Engine.OnRemoteUnpublished = MeetingOnRemoteUnpublished;
-                    break;
-                case RCRTCRole.LIVE_BROADCASTER:
-                    Engine.OnUserJoined = HostOnUserJoined;
-                    Engine.OnUserOffline = HostOnUserOffline;
-                    Engine.OnUserLeft = HostOnUserLeft;
-
-                    Engine.OnRemotePublished = HostOnRemotePublished;
-                    Engine.OnRemoteUnpublished = HostOnRemoteUnpublished;
-                    break;
-                case RCRTCRole.LIVE_AUDIENCE:
-                    Engine.OnUserJoined = AudienceOnUserJoined;
-                    Engine.OnUserOffline = AudienceOnUserOffline;
-                    Engine.OnUserLeft = AudienceOnUserLeft;
-
-                    Engine.OnRemoteLiveMixPublished = AudienceOnRemoteLiveMixPublished;
-                    Engine.OnRemoteLiveMixUnpublished = AudienceOnRemoteLiveMixUnpublished;
-                    break;
-            }
-            Dictionary<string, string> d = new Dictionary<string, string>();
-            d.Add("!","1");
-            Engine.OnRoomJoined = delegate (int code, String message)
-            {
-                Engine.OnRoomJoined = null;
-
-                RunOnMainThread.Enqueue(() =>
-                {
-                    HideLoading();
-                    if (code == 0)
-                    {
-                        ConnectedCanvas.SetActive(false);
-                        switch (Role)
-                        {
-                            case RCRTCRole.MEETING_MEMBER:
-                                ChangeToMeeting(RoomId);
-                                break;
-                            case RCRTCRole.LIVE_BROADCASTER:
-                                ChangeToHost(RoomId);
-                                break;
-                            case RCRTCRole.LIVE_AUDIENCE:
-                                ChangeToAudience(RoomId);
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        ShowToast(message);
-                    }
-                });
-            };
-           
-            RCRTCRoomSetup setup = roomSetupBuilder.WithRole(Role).Build();
-            int ret = Engine.JoinRoom(RoomId, setup);
-            if (ret != 0)
-            {
-                HideLoading();
-                ShowToast("Error " + ret);
-            }
+            RefreshCustomAudioMixUserList();
         }
+        #endregion
 
-        public void OnClickSwitchCamera()
-        {
-#if UNITY_STANDALONE_WIN
-            if (CurrentCamera != null)
-            {
-                RCRTCDevice[] list = Engine.GetCameraList();
-                Debug.Log("获取到摄像头列表" + list.Length);
-                if (list.Length > 1)
-                {
-                    List<RCRTCDevice> devices = new List<RCRTCDevice>
-                    {
-                        CurrentCamera
-                    };
-                    ReloadDeviceList(list, devices, true, false, (device,value) => {
-                        int ret = Engine.SwitchCamera(device);
-                        CurrentCamera = device;
-                        Debug.Log("切换摄像头结果" + ret);
-                    });
-                }
-                else
-                {
-                    ShowToast("没有可切换的摄像头");
-                }
-            }
-            else
-            {
-                ShowToast("还没开启摄像头");
-            }
-#else
-        Engine.SwitchCamera();
-#endif
-        }
-
-        public void OnClickLeaveMeeting()
-        {
-            ShowLoading();
-
-            if (MeetingAudioSource.isPlaying)
-            {
-                MeetingAudioSource.Stop();
-            }
-
-            Engine.OnRoomLeft = delegate (int code, String message)
-            {
-                Engine.OnRoomLeft = null;
-
-                RunOnMainThread.Enqueue(() =>
-                {
-                    HideLoading();
-                    ChangeToConnected();
-                    if (code != 0)
-                    {
-                        ShowToast(message);
-                    }
-                    Engine.Destroy();
-                });
-            };
-            Engine.SetStatsListener(null);
-            Engine.LeaveRoom();
-
-            resetMeetingUI();
-        }
-
-        public void OnClickMeetingEnableMicrophoneSwitch()
-        {
-            if (!CheckMicrophonePermission())
-            {
-                ShowToast("没有麦克风权限");
-                return;
-            }
-#if UNITY_STANDALONE_WIN
-            RCRTCDevice[] list = Engine.GetMicrophoneList();
-            Debug.Log("获取到麦克风列表" + list.Length);
-            if (list.Length > 0)
-            {
-                ReloadDeviceList(list, CurrentMicrophones, true, true,(device, value) => {
-                    if (CurrentMicrophones.Contains(device))
-                    {
-                        if (!value)
-                        {
-                            Engine.EnableMicrophone(device, false, false);
-                        }
-                    }
-                    else
-                    {
-                        foreach (var item in CurrentMicrophones)
-                        {
-                            Engine.EnableMicrophone(item, false, false);
-                        }
-                        Engine.EnableMicrophone(device, value, true);
-                    }
-                    CurrentMicrophones.Clear();
-                    if (value)
-                    {
-                        CurrentMicrophones.Add(device);
-                    }
-                    /*
-                    if (value)
-                    {
-                        CurrentMicrophones.Add(device);
-                    }
-                    else
-                    {
-                        CurrentMicrophones.Remove(device);
-                    }*/
-                });
-            }
-            else
-            {
-                ShowToast("没有可用的麦克风");
-            }
-#else
-            int ret = Engine.EnableMicrophone(!Microphone);
-            if (ret == 0)
-            {
-                Microphone = !Microphone;
-                MeetingCanvasEnableMicrophoneSwitchInfo.text = Microphone ? "关闭麦克风" : "开启麦克风";
-            }
-#endif
-        }
-
-        public void OnClickMeetingEnableCameraSwitch()
-        {
-            bool? isEnabled = _enableCamera(MeetingVideoPanel.videoView);
-            if (isEnabled != null)
-            {
-                MeetingCanvasEnableCameraSwitchInfo.text = isEnabled.Value ? "关闭摄像头" : "开启摄像头";
-            }
-        }
-
-        public void OnClickMeetingPublishAudioSwitch()
-        {
-            ShowLoading();
-            if (!PublishAudio)
-            {
-                Engine.OnPublished = delegate (RCRTCMediaType type, int code, String message)
-                {
-                    Engine.OnPublished = null;
-
-                    RunOnMainThread.Enqueue(() =>
-                    {
-                        HideLoading();
-                        if (code != 0)
-                        {
-                            ShowToast(message);
-                        }
-                        else
-                        {
-                            PublishAudio = true;
-                            MeetingCanvasPublishAudioSwitchInfo.text = PublishAudio ? "取消发布音频" : "发布音频";
-                        }
-                    });
-                };
-
-                int ret = Engine.Publish(RCRTCMediaType.AUDIO);
-                if (ret != 0)
-                {
-#if UNITY_STANDALONE_WIN
-                    if (CurrentMicrophones.Count == 0)
-                    {
-                        RCRTCDevice[] list = Engine.GetMicrophoneList();
-                        if (list.Length == 0)
-                        {
-                            CurrentMicrophones = new List<RCRTCDevice> { list[0] };
-                        }
-                    }
-#endif
-                    HideLoading();
-                    ShowToast("Error " + ret);
-                }
-            }
-            else
-            {
-                Engine.OnUnpublished = delegate (RCRTCMediaType type, int code, String message)
-                {
-                    Engine.OnUnpublished = null;
-
-                    RunOnMainThread.Enqueue(() =>
-                    {
-                        HideLoading();
-                        if (code != 0)
-                        {
-                            ShowToast(message);
-                        }
-                        else
-                        {
-                            PublishAudio = false;
-                            MeetingCanvasPublishAudioSwitchInfo.text = PublishAudio ? "取消发布音频" : "发布音频";
-                            RemoveAudioStats(MeetingCanvasStatsTable);
-                        }
-                    });
-                };
-                int ret = Engine.Unpublish(RCRTCMediaType.AUDIO);
-                if (ret != 0)
-                {
-                    HideLoading();
-                    ShowToast("Error" + ret);
-                }
-            }
-        }
-
-        public void OnClickMeetingPlayBackgroundMusic()
-        {
-            PlayBackgroundMusic = !PlayBackgroundMusic;
-            if (PlayBackgroundMusic)
-            {
-                MeetingAudioSource.Play();
-            }
-            else
-            {
-                MeetingAudioSource.Stop();
-            }
-            MeetingCanvasPlayBackgroundMusicSwitchInfo.text = PlayBackgroundMusic ? "停止背景音乐" : "播放背景音乐";
-        }
-
-        public void OnClickMeetingSwitchAudioOutput()
-        {
-#if UNITY_STANDALONE_WIN
-            RCRTCDevice[] list = Engine.GetSpeakerList();
-            Debug.Log("获取到扬声器列表" + list.Length);
-            if (list.Length > 0)
-            {
-                ReloadDeviceList(list, CurrentSpeakers, false, true,(device, value) => {
-                    if (CurrentSpeakers.Contains(device))
-                    {
-                        if (!value)
-                        {
-                            Engine.EnableSpeaker(device, false);
-                        }
-                    }
-                    else
-                    {
-                        foreach (var item in CurrentSpeakers)
-                        {
-                            Engine.EnableSpeaker(item, false);
-                        }
-                        Engine.EnableSpeaker(device, value);
-                    }
-                    CurrentSpeakers.Clear();
-                    if (value)
-                    {
-                        CurrentSpeakers.Add(device);
-                    }
-                    /*if (value)
-                    {
-                        CurrentSpeakers.Add(device);
-                    }
-                    else
-                    {
-                        CurrentSpeakers.Remove(device);
-                    }*/
-                });
-            }
-            else
-            {
-                ShowToast("没有可用的扬声器");
-            }
-#else
-            int ret = Engine.EnableSpeaker(!Speaker);
-            if (ret == 0)
-            {
-                Speaker = !Speaker;
-                MeetingCanvasSwitchAudioOutputInfo.text = Speaker ? "扬声器" : "听筒";
-            }
-#endif
-        }
-
-        public void OnClickMeetingAudioEffect()
-        {
-#if UNITY_STANDALONE_WIN
-            ShowToast("Windows 暂不支持此功能");
-            return;
-#endif
-            Engine.OnAudioEffectCreated = delegate (int id, int code, String message)
-            {
-                RunOnMainThread.Enqueue(() =>
-                {
-                    if (code != 0)
-                    {
-                        ShowToast("Create Audio Effect " + id + " Error: " + message);
-                    }
-                    else
-                    {
-                        AddAudioEffect(id);
-                    }
-                });
-            };
-            for (int i = 0; i < AudioEffectNames.Length; i++)
-            {
-                String file = String.Format(AudioEffectFilePathFormat, i);
-#if UNITY_ANDROID
-                String path = "file:///android_asset/" + file;
-#else
-                String path = Path.Combine(Application.streamingAssetsPath, file);
-#endif
-                int ret = Engine.CreateAudioEffect(path, i);
-                if (ret != 0)
-                {
-                    ShowToast("Create Audio Effect " + file + " Error " + ret);
-                }
-            }
-            AudioEffectCanvas.SetActive(true);
-        }
-
-        public void OnClickMeetingPublishVideo()
-        {
-            ShowLoading();
-            if (!PublishVideo)
-            {
-                Engine.OnPublished = delegate(RCRTCMediaType type, int code, String errMsg)
-                {
-                    RunOnMainThread.Enqueue(() =>
-                    {
-                        HideLoading();
-                        if (code != 0)
-                        {
-                            string toast = $"Publish video error: {errMsg}";
-                            ShowToast(toast);
-                        }
-                        else
-                        {
-                            PublishVideo = true;
-                            MeetingPublishVideoText.text = "取消发布视频";
-                        }
-                    });
-                };
-                int ret = Engine.Publish(RCRTCMediaType.VIDEO);
-                if (ret != 0)
-                {
-                    HideLoading();
-                    ShowToast("Error" + ret);
-                }
-                RCRTCVideoConfig config = MeetingVideoConfigPanel.VideoConfig;
-                Engine.SetVideoConfig(config);
-                Debug.Log($"SetVideoConfig {config}");
-            }
-            else
-            {
-                Engine.OnUnpublished = delegate(RCRTCMediaType type, int code, string msg)
-                {
-                    RunOnMainThread.Enqueue(() =>
-                    {
-                        HideLoading();
-                        if (code != 0)
-                        {
-                            string toast = $"UnPublish video error: {msg}";
-                            ShowToast(toast);
-                        }
-                        else
-                        {
-                            PublishVideo = false;
-                            MeetingPublishVideoText.text = "发布视频";
-                            RemoveVideoStats(MeetingCanvasStatsTable);
-                        }
-                    });
-                };
-                int ret = Engine.Unpublish(RCRTCMediaType.VIDEO);
-                if (ret != 0)
-                {
-                    HideLoading();
-                    ShowToast("Error" + ret);
-                }
-            }
-        }
-
-        public void OnClickLeaveHost()
-        {
-            ShowLoading();
-            Engine.OnRoomLeft = delegate (int code, String message)
-            {
-                Engine.OnRoomLeft = null;
-
-                RunOnMainThread.Enqueue(() =>
-                {
-                    HideLoading();
-                    ChangeToConnected();
-                    if (code != 0)
-                    {
-                        ShowToast(message);
-                    }
-                    Engine.Destroy();
-                });
-            };
-            Engine.SetStatsListener(null);
-            Engine.LeaveRoom();
-            
-            resetHostUI();
-        }
-
-        public void OnClickHostEnableMicrophoneSwitch()
-        {
-            if (!CheckMicrophonePermission())
-            {
-                ShowToast("没有麦克风权限");
-                return;
-            }
-#if UNITY_STANDALONE_WIN
-            RCRTCDevice[] list = Engine.GetMicrophoneList();
-            Debug.Log("获取到麦克风列表" + list.Length);
-            if (list.Length > 0)
-            {
-                ReloadDeviceList(list, CurrentMicrophones, false, true, (device, value) => {
-                    if (CurrentMicrophones.Contains(device))
-                    {
-                        if (!value)
-                        {
-                            Engine.EnableMicrophone(device, false, false);
-                        }
-                    }
-                    else
-                    {
-                        foreach (var item in CurrentMicrophones)
-                        {
-                            Engine.EnableMicrophone(item, false, false);
-                        }
-                        Engine.EnableMicrophone(device, value, true);
-                    }
-                    CurrentMicrophones.Clear();
-                    if (value)
-                    {
-                        CurrentMicrophones.Add(device);
-                    }
-                    /*if (value)
-                    {
-                        CurrentMicrophones.Add(device);
-                    }
-                    else
-                    {
-                        CurrentMicrophones.Remove(device);
-                    }*/
-                });
-            }
-            else
-            {
-                ShowToast("没有可用的麦克风");
-            }
-#else
-            int ret = Engine.EnableMicrophone(!Microphone);
-            if (ret == 0)
-            {
-                Microphone = !Microphone;
-                HostCanvasEnableMicrophoneSwitchInfo.text = Microphone ? "关闭麦克风" : "开启麦克风";
-            }
-#endif
-        }
-
-        public void OnClickHostPublishAudioSwitch()
-        {
-            ShowLoading();
-            if (!PublishAudio)
-            {
-                Engine.OnPublished = delegate (RCRTCMediaType type, int code, String message)
-                {
-                    Engine.OnPublished = null;
-
-                    RunOnMainThread.Enqueue(() =>
-                    {
-                        HideLoading();
-                        if (code != 0)
-                        {
-                            ShowToast(message);
-                        }
-                        else
-                        {
-                            PublishAudio = true;
-                            HostCanvasPublishAudioSwitchInfo.text = PublishAudio ? "取消发布音频" : "发布音频";
-                            HostCanvasConfigCDN.interactable = PublishAudio;
-                        }
-                    });
-                };
-                int ret = Engine.Publish(RCRTCMediaType.AUDIO);
-                if (ret != 0)
-                {
-                    HideLoading();
-                    ShowToast("Error " + ret);
-                }
-            }
-            else
-            {
-                Engine.OnUnpublished = delegate (RCRTCMediaType type, int code, String message)
-                {
-                    Engine.OnUnpublished = null;
-
-                    RunOnMainThread.Enqueue(() =>
-                    {
-                        HideLoading();
-                        if (code != 0)
-                        {
-                            ShowToast(message);
-                        }
-                        else
-                        {
-                            PublishAudio = false;
-                            HostCanvasPublishAudioSwitchInfo.text = PublishAudio ? "取消发布音频" : "发布音频";
-                            HostCanvasConfigCDN.interactable = PublishAudio;
-                            RemoveAudioStats(HostCanvasStatsTable);
-                        }
-                    });
-                };
-                int ret = Engine.Unpublish(RCRTCMediaType.AUDIO);
-                if (ret != 0)
-                {
-                    HideLoading();
-                    ShowToast("Error" + ret);
-                }
-            }
-        }
-        
-        public void OnClickHostSwitchAudioOutput()
-        {
-#if UNITY_STANDALONE_WIN
-            RCRTCDevice[] list = Engine.GetSpeakerList();
-            Debug.Log("获取到扬声器列表" + list.Length);
-            if (list.Length > 0)
-            {
-                ReloadDeviceList(list, CurrentSpeakers, false, true, (device, value) => {
-                    if (CurrentSpeakers.Contains(device))
-                    {
-                        if (!value)
-                        {
-                            Engine.EnableSpeaker(device, false);
-                        }
-                    }
-                    else
-                    {
-                        foreach (var item in CurrentSpeakers)
-                        {
-                            Engine.EnableSpeaker(item, false);
-                        }
-                        Engine.EnableSpeaker(device, value);
-                    }
-                    CurrentSpeakers.Clear();
-                    if (value)
-                    {
-                        CurrentSpeakers.Add(device);
-                    }
-                    /*if (value)
-                    {
-                        CurrentSpeakers.Add(device);
-                    }
-                    else
-                    {
-                        CurrentSpeakers.Remove(device);
-                    }*/
-                });
-            }
-            else
-            {
-                ShowToast("没有可用的扬声器");
-            }
-#else
-            int ret = Engine.EnableSpeaker(!Speaker);
-            if (ret == 0)
-            {
-                Speaker = !Speaker;
-                HostCanvasSwitchAudioOutputInfo.text = Speaker ? "扬声器" : "听筒";
-            }
-#endif
-        }
-        
-        public void OnClickHostEnableCameraSwitch()
-        {
-            bool? isEnabled = _enableCamera(HostVideoPanel.videoView);
-            if (isEnabled != null)
-            {
-                HostCanvasEnableCameraSwitchInfo.text = isEnabled.Value ? "关闭摄像头" : "开启摄像头";
-            }
-        }
-
-        public void OnClickHostPublishVideo()
-        {
-            ShowLoading();
-            if (!PublishVideo)
-            {
-                Engine.OnPublished = delegate(RCRTCMediaType type, int code, String errMsg)
-                {
-                    RunOnMainThread.Enqueue(() =>
-                    {
-                        HideLoading();
-                        if (code != 0)
-                        {
-                            string toast = $"Publish video error: {errMsg}";
-                            ShowToast(toast);
-                        }
-                        else
-                        {
-                            PublishVideo = true;
-                            HostPublishVideoText.text = "取消发布视频";
-                        }
-                    });
-                };
-                int ret = Engine.Publish(RCRTCMediaType.VIDEO);
-                if (ret != 0)
-                {
-                    HideLoading();
-                    ShowToast("Error" + ret);
-                }
-                RCRTCVideoConfig config = HostVideoConfigPanel.VideoConfig;
-                Engine.SetVideoConfig(config);
-                Debug.Log($"SetVideoConfig {config}");
-            }
-            else
-            {
-                Engine.OnUnpublished = delegate(RCRTCMediaType type, int code, string msg)
-                {
-                    RunOnMainThread.Enqueue(() =>
-                    {
-                        HideLoading();
-                        if (code != 0)
-                        {
-                            string toast = $"UnPublish video error: {msg}";
-                            ShowToast(toast);
-                        }
-                        else
-                        {
-                            PublishVideo = false;
-                            HostPublishVideoText.text = "发布视频";
-                            RemoveVideoStats(HostCanvasStatsTable);
-                        }
-                    });
-                };
-                int ret = Engine.Unpublish(RCRTCMediaType.VIDEO);
-                if (ret != 0)
-                {
-                    HideLoading();
-                    ShowToast("Error" + ret);
-                }
-            }
-        }
-        
+        #region Audience
         public void OnClickLeaveAudience()
         {
-            ShowLoading();
+            ExampleUtils.ShowLoading();
             Engine.OnRoomLeft = delegate (int code, String message)
             {
                 Engine.OnRoomLeft = null;
 
                 RunOnMainThread.Enqueue(() =>
                 {
-                    HideLoading();
+                    ExampleUtils.HideLoading();
                     ChangeToConnected();
                     if (code != 0)
                     {
-                        ShowToast(message);
+                        ExampleUtils.ShowToast(message);
                     }
                     Engine.Destroy();
+                    Engine = null;
                 });
             };
             Engine.SetStatsListener(null);
             Engine.LeaveRoom();
+
+            resetAudienceUI();
         }
-        
+
         public void OnClickAudienceSubscribe()
         {
             if (AudienceIsSubscribed)
             {
-                _AudienceUnsubscribe();
-                return;
-            }
-            
-            ShowLoading();
-            RCRTCMediaType subscribeType = AudienceUISelectedMediaType;
-            Engine.OnLiveMixSubscribed = delegate (RCRTCMediaType type, int code, String message)
-            {
-                Engine.OnLiveMixSubscribed = null;
-                RunOnMainThread.Enqueue(() =>
+                if (AudienceSubscribeType != null)
                 {
-                    HideLoading();
-                    if (code != 0)
+                    ExampleUtils.ShowLoading();
+                    Engine.OnLiveMixUnsubscribed = delegate (RCRTCMediaType type, int code, String message)
                     {
-                        ShowToast(message);
-                        return;
-                    }
+                        Engine.OnLiveMixUnsubscribed = null;
+                        RunOnMainThread.Enqueue(() =>
+                        {
+                            ExampleUtils.HideLoading();
+                            AudienceIsSubscribed = false;
+                            AudienceSubscribeButton.transform.Find("Text").GetComponent<Text>().text = "订阅";
 
-                    AudienceSubscribeType = subscribeType;
-                    AudienceIsSubscribed = true;
-                    AudienceSubscribeButton.transform.Find("Text").GetComponent<Text>().text = "取消订阅";
-                    if (subscribeType != RCRTCMediaType.AUDIO)
+                            if (code != 0)
+                            {
+                                ExampleUtils.ShowToast(message);
+                                return;
+                            }
+
+                            if (AudienceSubscribeType != null)
+                            {
+                                if (AudienceSubscribeType.Value != RCRTCMediaType.AUDIO)
+                                {
+                                    Engine.RemoveLiveMixView();
+                                    AudienceVideoPanel.videoView.DestroySurface();
+                                }
+
+                                AudienceSubscribeType = null;
+                            }
+                        });
+                    };
+
+                    var ret = Engine.UnsubscribeLiveMix(AudienceSubscribeType.Value);
+                    if (ret != 0)
                     {
-                        Engine.SetLiveMixView(AudienceVideoPanel.videoView);
+                        ExampleUtils.HideLoading();
+                        ExampleUtils.ShowToast("UnsubscribeLiveMix Error " + ret);
+                        AudienceIsSubscribed = false;
+                        AudienceSubscribeButton.transform.Find("Text").GetComponent<Text>().text = "订阅";
                     }
-                });
-            };
-
-            if (subscribeType != RCRTCMediaType.AUDIO)
-            {
-                var isTiny = AudienceTinyStream.isOn;
-                var ret = Engine.SubscribeLiveMix(AudienceUISelectedMediaType, isTiny);
-                if (ret != 0)
-                {
-                    HideLoading();
-                    ShowToast("Subscribe Live Mix Error " + ret);
-                } 
+                }
             }
             else
             {
-                var ret = Engine.SubscribeLiveMix(RCRTCMediaType.AUDIO);
-                if (ret != 0)
+                ExampleUtils.ShowLoading();
+                RCRTCMediaType subscribeType = AudienceUISelectedMediaType;
+                Engine.OnLiveMixSubscribed = delegate (RCRTCMediaType type, int code, String message)
                 {
-                    HideLoading();
-                    ShowToast("Subscribe Live Mix Error " + ret);
+                    Engine.OnLiveMixSubscribed = null;
+                    RunOnMainThread.Enqueue(() =>
+                    {
+                        ExampleUtils.HideLoading();
+                        if (code != 0)
+                        {
+                            ExampleUtils.ShowToast(message);
+                            return;
+                        }
+
+                        AudienceSubscribeType = subscribeType;
+                        AudienceIsSubscribed = true;
+                        AudienceSubscribeButton.transform.Find("Text").GetComponent<Text>().text = "取消订阅";
+                        if (subscribeType != RCRTCMediaType.AUDIO)
+                        {
+                            Engine.SetLiveMixView(AudienceVideoPanel.videoView);
+                        }
+                    });
+                };
+
+                if (subscribeType != RCRTCMediaType.AUDIO)
+                {
+                    var isTiny = AudienceTinyStream.isOn;
+                    var ret = Engine.SubscribeLiveMix(AudienceUISelectedMediaType, isTiny);
+                    if (ret != 0)
+                    {
+                        ExampleUtils.HideLoading();
+                        ExampleUtils.ShowToast("Subscribe Live Mix Error " + ret);
+                    }
+                }
+                else
+                {
+                    var ret = Engine.SubscribeLiveMix(RCRTCMediaType.AUDIO);
+                    if (ret != 0)
+                    {
+                        ExampleUtils.HideLoading();
+                        ExampleUtils.ShowToast("Subscribe Live Mix Error " + ret);
+                    }
                 }
             }
         }
@@ -1599,7 +1951,7 @@ namespace cn_rongcloud_rtc_unity_example
             }
             else
             {
-                ShowToast("没有可用的扬声器");
+                ExampleUtils.ShowToast("没有可用的扬声器");
             }
 #else
             int ret = Engine.EnableSpeaker(!Speaker);
@@ -1637,47 +1989,173 @@ namespace cn_rongcloud_rtc_unity_example
             }
         }
 
-        public void OnClickMessageAction()
+        public void OnClickAudienceMuteVideo(bool value)
         {
-#if UNITY_STANDALONE_WIN
-            ShowToast("Windows 暂不支持此功能");
-            return;
-#endif
-            ShowLoading();
-            if (!InChatRoom)
+            Engine.MuteLiveMixStream(RCRTCMediaType.VIDEO, value);
+        }
+
+        public void OnClickAudienceMuteAudio(bool value)
+        {
+            Engine.MuteLiveMixStream(RCRTCMediaType.AUDIO, value);
+        }
+
+        private bool InnerCdnIsSubscribed;
+
+        public void OnClickLiveMixInnerCdnSubscribe()
+        {
+            ExampleUtils.ShowLoading();
+            if (InnerCdnIsSubscribed)
             {
-                RCIMClient.Instance.JoinChatRoom(RoomId, (code) =>
-                 {
-                     if (code == RCErrorCode.Succeed)
-                     {
-                         RunOnMainThread.Enqueue(() =>
-                         {
-                             InChatRoom = true;
-                             MessageCanvasActionInfo.text = InChatRoom ? "离开聊天室" : "加入聊天室";
-                             HideLoading();
-                         });
-                     }
-                     else
-                     {
-                         RunOnMainThread.Enqueue(() =>
-                         {
-                             HideLoading();
-                             ShowToast("IM Join Chat Room Error, Code = " + code);
-                         });
-                     }
-                 }, -1);
+                Engine.OnLiveMixInnerCdnStreamUnsubscribed = delegate (int code, string errMsg)
+                {
+                    Engine.OnLiveMixInnerCdnStreamSubscribed = null;
+                    RunOnMainThread.Enqueue(() =>
+                    {
+                        ExampleUtils.HideLoading();
+                        if (code == 0)
+                        {
+                            Engine.RemoveLiveMixInnerCdnStreamView();
+                            ExampleUtils.ShowToast("取消订阅成功");
+                            AudienceCanvas.transform.Find("SubscribeCDN/Text").GetComponent<Text>().text = "订阅";
+                            InnerCdnIsSubscribed = false;
+                        }
+                        else
+                        {
+                            ExampleUtils.ShowToast($"{errMsg} code:{code}");
+                        }
+                    });
+                };
+                int ret = Engine.UnsubscribeLiveMixInnerCdnStream();
+                if (ret != 0)
+                {
+                    Engine.OnLiveMixInnerCdnStreamSubscribed = null;
+                    ExampleUtils.HideLoading();
+                    ExampleUtils.ShowToast($"取消订阅发生错误 code:{ret}");
+                }
             }
             else
             {
-                RCIMClient.Instance.QuitChatRoom(RoomId, (code) =>
+                Engine.OnLiveMixInnerCdnStreamSubscribed = delegate (int code, string errMsg)
                 {
+                    Engine.OnLiveMixInnerCdnStreamSubscribed = null;
                     RunOnMainThread.Enqueue(() =>
                     {
-                        HideLoading();
+                        ExampleUtils.HideLoading();
+                        if (code == 0)
+                        {
+                            ExampleUtils.ShowToast("订阅成功");
+                            AudienceCanvas.transform.Find("SubscribeCDN/Text").GetComponent<Text>().text = "取消订阅";
+                            InnerCdnIsSubscribed = true;
+                        }
+                        else
+                        {
+                            ExampleUtils.ShowToast($"{errMsg} code:{code}");
+                        }
+                    });
+                };
+                int ret = Engine.SubscribeLiveMixInnerCdnStream();
+                if (ret != 0)
+                {
+                    Engine.OnLiveMixInnerCdnStreamSubscribed = null;
+                    ExampleUtils.HideLoading();
+                    ExampleUtils.ShowToast($"订阅发生错误 code:{ret}");
+                }
+                else
+                {
+                    RCRTCView view = AudienceCanvas.transform.Find("CDNPanel").GetComponent<RCRTCView>();
+                    Engine.SetLiveMixInnerCdnStreamView(view);
+                }
+            }
+        }
+
+        public void OnChangeLiveMixInnerCdnVideoFps(int value)
+        {
+            Engine.SetLocalLiveMixInnerCdnVideoFps((RCRTCVideoFps)value);
+        }
+
+        public void OnChangeLiveMixInnerCdnVideoResolution(int value)
+        {
+            Engine.SetLocalLiveMixInnerCdnVideoResolution(GetResolutionWidth((RCRTCVideoResolution)value), GetResolutionHeight((RCRTCVideoResolution)value));
+        }
+
+        public void OnClickLiveMixInnerCdnMuteVideo(bool value)
+        {
+            Engine.MuteLiveMixInnerCdnStream(value);
+        }
+
+        public void OnClickSwitchHost()
+        {
+            Engine.OnLiveRoleSwitched = delegate (RCRTCRole current, int code, string errMsg)
+            {
+                Engine.OnLiveRoleSwitched = null;
+                RunOnMainThread.Enqueue(() =>
+                {
+                    ExampleUtils.HideLoading();
+                    if (code != 0)
+                    {
+                        ExampleUtils.ShowToast($"切换失败 code:{code} msg:{errMsg}");
+                    }
+                    else
+                    {
+                        SwitchRole(current);
+                    }
+                });
+            };
+            ExampleUtils.ShowLoading();
+            int ret = Engine.SwitchLiveRole(RCRTCRole.LIVE_BROADCASTER);
+            if (ret != 0)
+            {
+                ExampleUtils.HideLoading();
+                Engine.OnLiveRoleSwitched = null;
+                ExampleUtils.ShowToast($"切换失败 code:{ret}");
+            }
+        }
+        #endregion
+
+        #region Message
+        public void OnClickMessageAction()
+        {
+#if UNITY_STANDALONE_WIN
+            ExampleUtils.ShowToast("Windows 暂不支持此功能");
+            return;
+#endif
+            ExampleUtils.ShowLoading();
+            if (!InChatRoom)
+            {
+                imEngine.OnChatRoomJoined = delegate (int code, string targetId) {
+                    imEngine.OnChatRoomJoined = null;
+                    if (code == (int)RCIMErrorCode.SUCCESS)
+                    {
+                        RunOnMainThread.Enqueue(() =>
+                        {
+                            InChatRoom = true;
+                            MessageCanvasActionInfo.text = InChatRoom ? "离开聊天室" : "加入聊天室";
+                            ExampleUtils.HideLoading();
+                        });
+                    }
+                    else
+                    {
+                        RunOnMainThread.Enqueue(() =>
+                        {
+                            ExampleUtils.HideLoading();
+                            ExampleUtils.ShowToast("IM Join Chat Room Error, Code = " + code);
+                        });
+                    }
+                };
+                imEngine?.JoinChatRoom(RoomId, 0, true);
+            }
+            else
+            {
+                imEngine.OnChatRoomLeft = delegate (int code, string targetId) {
+                    imEngine.OnChatRoomLeft = null;
+                    RunOnMainThread.Enqueue(() =>
+                    {
+                        ExampleUtils.HideLoading();
                         InChatRoom = false;
                         MessageCanvasActionInfo.text = "加入聊天室";
                     });
-                });
+                };
+                imEngine?.LeaveChatRoom(RoomId);
             }
         }
 
@@ -1686,7 +2164,6 @@ namespace cn_rongcloud_rtc_unity_example
             foreach (GameObject message in Messages)
             {
                 Destroy(message);
-                // DestroyImmediate(message);
             }
             Messages.Clear();
 
@@ -1696,11 +2173,11 @@ namespace cn_rongcloud_rtc_unity_example
             }
             else
             {
-                ShowLoading();
+                ExampleUtils.ShowLoading();
                 CloseMessagePanel = true;
-                RCIMClient.Instance.QuitChatRoom(RoomId, (code) =>
-                {
-                    if (code == RCErrorCode.Succeed)
+                imEngine.OnChatRoomLeft = delegate (int code, string targetId) {
+                    imEngine.OnChatRoomLeft = null;
+                    if (code == (int)RCIMErrorCode.SUCCESS)
                     {
                         RunOnMainThread.Enqueue(() =>
                         {
@@ -1711,7 +2188,7 @@ namespace cn_rongcloud_rtc_unity_example
                                 MessageCanvas.SetActive(false);
                             }
                             CloseMessagePanel = false;
-                            HideLoading();
+                            ExampleUtils.HideLoading();
                         });
                     }
                     else
@@ -1719,11 +2196,12 @@ namespace cn_rongcloud_rtc_unity_example
                         RunOnMainThread.Enqueue(() =>
                         {
                             CloseMessagePanel = false;
-                            HideLoading();
-                            ShowToast("IM Left Chat Room Error, Code = " + code);
+                            ExampleUtils.HideLoading();
+                            ExampleUtils.ShowToast("IM Left Chat Room Error, Code = " + code);
                         });
                     }
-                });
+                };
+                imEngine?.LeaveChatRoom(RoomId);
             }
         }
 
@@ -1731,31 +2209,28 @@ namespace cn_rongcloud_rtc_unity_example
         {
             if (!InChatRoom)
             {
-                ShowToast("请先加入聊天室");
+                ExampleUtils.ShowToast("请先加入聊天室");
                 return;
             }
             String content = MessageCanvasMessageInput.text;
             if (String.IsNullOrEmpty(content))
             {
-                ShowToast("请先输入消息");
+                ExampleUtils.ShowToast("请先输入消息");
                 return;
             }
-            var textMsg = new RCTextMessage($"{User.Name}, {content}");
+            var textMsg = imEngine?.CreateTextMessage(RCIMConversationType.CHATROOM, RoomId, "", $"{User.Name}, {content}");
             MessageCanvasMessageInput.text = "";
-            RCIMClient.Instance.SendMessage(RCConversationType.ChatRoom, RoomId, textMsg);
+            imEngine?.SendMessage(textMsg);
         }
+        #endregion
 
-        public void OnClickCDNAdd()
-        {
-            ShowCDNDialog();
-        }
-
+        #region AudioEffect
         public void OnClickAudioEffectClose()
         {
             int ret = Engine.StopAllAudioEffects();
             if (ret != 0)
             {
-                ShowToast("Stop All Audio Effects Error " + ret);
+                ExampleUtils.ShowToast("Stop All Audio Effects Error " + ret);
             }
 
             var ids = AudioEffects.Keys;
@@ -1764,7 +2239,7 @@ namespace cn_rongcloud_rtc_unity_example
                 ret = Engine.ReleaseAudioEffect(id);
                 if (ret != 0)
                 {
-                    ShowToast("Release Audio Effect " + id + " Error " + ret);
+                    ExampleUtils.ShowToast("Release Audio Effect " + id + " Error " + ret);
                 }
             }
 
@@ -1779,10 +2254,32 @@ namespace cn_rongcloud_rtc_unity_example
             AudioEffectCanvas.SetActive(false);
         }
 
+        private void OnClickAudioEffectPlay(GameObject item, int id)
+        {
+            int volume = (int)item.transform.Find("Volume").GetComponent<Slider>().value;
+            int count = (int)item.transform.Find("Count").GetComponent<Slider>().value;
+            int ret = Engine.PlayAudioEffect(id, volume, count);
+            if (ret != 0)
+            {
+                ExampleUtils.ShowToast("Play Audio Effect " + id + " Error " + ret);
+            }
+        }
+
+        private void OnClickAudioEffectStop(int id)
+        {
+            int ret = Engine.StopAudioEffect(id);
+            if (ret != 0)
+            {
+                ExampleUtils.ShowToast("Stop Audio Effect " + id + " Error " + ret);
+            }
+        }
+        #endregion
+
+        #region AudioMix
         public void OnClickAudioMixOpen()
         {
 #if UNITY_STANDALONE_WIN
-            ShowToast("Windows 暂不支持此功能");
+            ExampleUtils.ShowToast("Windows 暂不支持此功能");
             return;
 #endif
             AudioMixCanvas.SetActive(true);
@@ -1832,22 +2329,22 @@ namespace cn_rongcloud_rtc_unity_example
             int ret = Engine.StartAudioMixing(path, AudioMixingMode, playback, 1);
             if (ret != 0)
             {
-                ShowToast("Start Audio Mixing Error " + ret);
+                ExampleUtils.ShowToast("Start Audio Mixing Error " + ret);
             }
             ret = Engine.AdjustAudioMixingVolume(mixingVolume);
             if (ret != 0)
             {
-                ShowToast("Adjust Audio Mixing Volume Error " + ret);
+                ExampleUtils.ShowToast("Adjust Audio Mixing Volume Error " + ret);
             }
             ret = Engine.AdjustAudioMixingPublishVolume(publishVolume);
             if (ret != 0)
             {
-                ShowToast("Adjust Audio Mixing Publish Volume Error " + ret);
+                ExampleUtils.ShowToast("Adjust Audio Mixing Publish Volume Error " + ret);
             }
             ret = Engine.AdjustAudioMixingPlaybackVolume(playbackVolume);
             if (ret != 0)
             {
-                ShowToast("Adjust Audio Mixing Playback Volume Error " + ret);
+                ExampleUtils.ShowToast("Adjust Audio Mixing Playback Volume Error " + ret);
             }
         }
 
@@ -1856,160 +2353,452 @@ namespace cn_rongcloud_rtc_unity_example
             int ret = Engine.StopAudioMixing();
             if (ret != 0)
             {
-                ShowToast("Stop Audio Mixing Error " + ret);
+                ExampleUtils.ShowToast("Stop Audio Mixing Error " + ret);
             }
         }
+        #endregion
 
-        public void OnClickDeviceListClose()
+        #region 通用
+        public void OnClickSwitchCamera()
         {
-            DeviceListCanvas.SetActive(false);
-        }
-
-#endregion
-
-        private RCRTCViewFitType getViewFitType(int value)
-        {
-            if (value == 0)
-            {
-                return RCRTCViewFitType.CENTER;
-            }
-            else if (value == 1)
-            {
-                return RCRTCViewFitType.COVER;
-            }
-            else if (value == 2)
-            {
-                return RCRTCViewFitType.FILL;
-            }
-
-            return RCRTCViewFitType.CENTER;
-        }
-        
-        private void initAudienceUIState()
-        {
-            AudienceUISelectedMediaType = RCRTCMediaType.AUDIO;
-            AudienceAudioToggle.isOn = true;
-            AudienceVideoToggle.isOn = false;
-            AudienceAudioVideoToggle.isOn = false;
-            AudienceTinyStream.isOn = false;
-            AudienceTinyStream.gameObject.SetActive(false);
-        }
-       
-        private void resetMeetingUI()
-        {
-            Microphone = false;
-            MeetingCanvasEnableMicrophoneSwitchInfo.text = Microphone ? "关闭麦克风" : "开启麦克风";
-
-            PublishAudio = false;
-            MeetingCanvasPublishAudioSwitchInfo.text = PublishAudio ? "取消发布音频" : "发布音频";
-
-            Speaker = false;
-            MeetingCanvasSwitchAudioOutputInfo.text = Speaker ? "扬声器" : "听筒";
-
-            Camera = false;
-            MeetingCanvasEnableCameraSwitchInfo.text = Camera ? "关闭摄像头" : "开启摄像头";
-
-            PublishVideo = false;
-            MeetingPublishVideoText.text = PublishVideo ? "取消发布视频" : "发布视频";
-
 #if UNITY_STANDALONE_WIN
-            MeetingCanvasEnableMicrophoneSwitchInfo.text = "麦克风列表";
-            MeetingCanvasSwitchAudioOutputInfo.text = "扬声器列表";
+            if (CurrentCamera != null)
+            {
+                RCRTCDevice[] list = Engine.GetCameraList();
+                Debug.Log("获取到摄像头列表" + list.Length);
+                if (list.Length > 1)
+                {
+                    List<RCRTCDevice> devices = new List<RCRTCDevice>
+                    {
+                        CurrentCamera
+                    };
+                    ReloadDeviceList(list, devices, true, false, (device, value) => {
+                        int ret = Engine.SwitchCamera(device);
+                        CurrentCamera = device;
+                        Debug.Log("切换摄像头结果" + ret);
+                    });
+                }
+                else
+                {
+                    ExampleUtils.ShowToast("没有可切换的摄像头");
+                }
+            }
+            else
+            {
+                ExampleUtils.ShowToast("还没开启摄像头");
+            }
+#else
+            Engine.SwitchCamera();
 #endif
         }
-        
-        private void resetHostUI()
+        public void OnCameraOrientationChanged(int value)
         {
-            Microphone = false;
-            HostCanvasEnableMicrophoneSwitchInfo.text = Microphone ? "关闭麦克风" : "开启麦克风";
-
-            PublishAudio = false;
-            HostCanvasPublishAudioSwitchInfo.text = PublishAudio ? "取消发布音频" : "发布音频";
-
-            Speaker = false;
-            HostCanvasSwitchAudioOutputInfo.text = Speaker ? "扬声器" : "听筒";
-
-            Camera = false;
-            HostCanvasEnableCameraSwitchInfo.text = Camera ? "关闭摄像头" : "开启摄像头";
-
-            PublishVideo = false;
-            HostPublishVideoText.text = PublishVideo ? "取消发布视频" : "发布视频";
-
 #if UNITY_STANDALONE_WIN
-            HostCanvasEnableMicrophoneSwitchInfo.text = "麦克风列表";
-            HostCanvasSwitchAudioOutputInfo.text = "扬声器列表";
+            ExampleUtils.ShowToast("Windows暂不支持");
+#else
+            switch (value)
+            {
+                case 0:
+                    Engine.SetCameraCaptureOrientation(RCRTCCameraCaptureOrientation.PORTRAIT);
+                    break;
+                case 1:
+                    Engine.SetCameraCaptureOrientation(RCRTCCameraCaptureOrientation.PORTRAIT_UPSIDE_DOWN);
+                    break;
+                case 2:
+                    Engine.SetCameraCaptureOrientation(RCRTCCameraCaptureOrientation.LANDSCAPE_LEFT);
+                    break;
+                case 3:
+                    Engine.SetCameraCaptureOrientation(RCRTCCameraCaptureOrientation.LANDSCAPE_RIGHT);
+                    break;
+                default:
+                    break;
+            }
 #endif
         }
+        #endregion
 
+        #endregion
+
+        #region EventAction
         private void OnVideoConfigChanged(RCRTCVideoConfig config)
         {
             Engine.SetVideoConfig(config);
         }
 
-        private void _AudienceUnsubscribe()
+        private void OnTinyVideoConfigChanged(RCRTCVideoConfig config)
         {
-            if (AudienceSubscribeType != null)
+            Engine.SetVideoConfig(config, true);
+        }
+
+        private void OnCustomStreamVideoConfigChanged(RCRTCVideoConfig config)
+        {
+            Engine.SetCustomStreamVideoConfig(StreamTag(), config);
+        }
+
+        private void OnClickSubscribeAudioSwitch(String id, Button audio, bool custom)
+        {
+            ExampleUtils.ShowLoading();
+            bool selected;
+            UserSubscribeAudioStates.TryGetValue(id, out selected);
+            if (!selected)
             {
-                ShowLoading();
-                Engine.OnLiveMixUnsubscribed = delegate (RCRTCMediaType type, int code, String message)
+                if (custom)
                 {
-                    Engine.OnLiveMixUnsubscribed = null;
-                    RunOnMainThread.Enqueue(() =>
+                    Engine.OnCustomStreamSubscribed = delegate (string userId, string tag, RCRTCMediaType type, int code,
+                                                          string errMsg)
                     {
-                        HideLoading();
-                        AudienceIsSubscribed = false;
-                        AudienceSubscribeButton.transform.Find("Text").GetComponent<Text>().text = "订阅"; 
-                    
-                        if (code != 0)
+                        Engine.OnCustomStreamSubscribed = null;
+                        RunOnMainThread.Enqueue(() =>
                         {
-                            ShowToast(message);
-                            return;
-                        }
-
-                        if (AudienceSubscribeType != null)
-                        {
-                            if (AudienceSubscribeType.Value != RCRTCMediaType.AUDIO)
+                            ExampleUtils.HideLoading();
+                            if (code != 0)
                             {
-                                Engine.RemoveLiveMixView();
-                                AudienceVideoPanel.videoView.DestroySurface();
+                                ExampleUtils.ShowToast(errMsg);
                             }
-
-                            AudienceSubscribeType = null;
-                        }
-                    });
-                };
-                
-                var ret = Engine.UnsubscribeLiveMix(AudienceSubscribeType.Value);
-                if (ret != 0)
+                            else
+                            {
+                                UserSubscribeAudioStates[$"{userId}#{tag}"] = true;
+                                audio.transform.Find("Text").GetComponent<Text>().text = "取消订阅音频";
+                            }
+                        });
+                    };
+                    string[] array = id.Split('#');
+                    int ret = Engine.SubscribeCustomStream(array[0], array[1], RCRTCMediaType.AUDIO, false);
+                    if (ret != 0)
+                    {
+                        ExampleUtils.HideLoading();
+                        ExampleUtils.ShowToast($"订阅失败 code:{ret}");
+                    }
+                }
+                else
                 {
-                    HideLoading();
-                    ShowToast("UnsubscribeLiveMix Error " + ret);
-                    AudienceIsSubscribed = false;
-                    AudienceSubscribeButton.transform.Find("Text").GetComponent<Text>().text = "订阅"; 
+                    Engine.OnSubscribed = delegate (String remoteUserId, RCRTCMediaType type, int code, String message)
+                    {
+                        Engine.OnSubscribed = null;
+
+                        RunOnMainThread.Enqueue(() =>
+                        {
+                            ExampleUtils.HideLoading();
+                            if (code != 0)
+                            {
+                                ExampleUtils.ShowToast(message);
+                            }
+                            else
+                            {
+                                UserSubscribeAudioStates[remoteUserId] = true;
+                                audio.transform.Find("Text").GetComponent<Text>().text = "取消订阅音频";
+                            }
+                        });
+                    };
+                    int ret = Engine.Subscribe(id, RCRTCMediaType.AUDIO);
+                    if (ret != 0)
+                    {
+                        ExampleUtils.HideLoading();
+                        ExampleUtils.ShowToast("Error" + ret);
+                    }
+                }
+            }
+            else
+            {
+                if (custom)
+                {
+                    Engine.OnCustomStreamUnsubscribed = delegate (string userId, string tag, RCRTCMediaType type, int code,
+                                                            string errMsg)
+                    {
+                        Engine.OnCustomStreamUnsubscribed = null;
+                        RunOnMainThread.Enqueue(() =>
+                        {
+                            ExampleUtils.HideLoading();
+                            if (code != 0)
+                            {
+                                ExampleUtils.ShowToast(errMsg);
+                            }
+                            else
+                            {
+                                UserSubscribeAudioStates[$"{userId}#{tag}"] = false;
+                                audio.transform.Find("Text").GetComponent<Text>().text = "订阅音频";
+                            }
+                        });
+                    };
+                    string[] array = id.Split('#');
+                    int ret = Engine.UnsubscribeCustomStream(array[0], array[1], RCRTCMediaType.AUDIO);
+                    if (ret != 0)
+                    {
+                        ExampleUtils.HideLoading();
+                        ExampleUtils.ShowToast($"取消订阅失败 code:{ret}");
+                    }
+                }
+                else
+                {
+                    Engine.OnUnsubscribed = delegate (String remoteUserId, RCRTCMediaType type, int code, String message)
+                    {
+                        Engine.OnUnsubscribed = null;
+
+                        RunOnMainThread.Enqueue(() =>
+                        {
+                            ExampleUtils.HideLoading();
+                            if (code != 0)
+                            {
+                                ExampleUtils.ShowToast(message);
+                            }
+                            else
+                            {
+                                UserSubscribeAudioStates[remoteUserId] = false;
+                                audio.transform.Find("Text").GetComponent<Text>().text = "订阅音频";
+                            }
+                        });
+                    };
+                    int ret = Engine.Unsubscribe(id, RCRTCMediaType.AUDIO);
+                    if (ret != 0)
+                    {
+                        ExampleUtils.HideLoading();
+                        ExampleUtils.ShowToast("Error" + ret);
+                    }
                 }
             }
         }
-        
-        private void RemoveVideoStats(GameObject table)
+
+        private void OnClickSubscribeVideoSwitch(String id, Button video, GameObject userItem, bool custom)
         {
-            var video = table.transform.Find("Video").gameObject;
-            if (video != null)
+            ExampleUtils.ShowLoading();
+            bool selected;
+            UserSubscribeVideoStates.TryGetValue(id, out selected);
+            if (!selected)
             {
-                Destroy(video);
-                Statses.Remove("Video");
+                bool isTiny = userItem.transform.Find("Panel/TinyStream").GetComponent<Toggle>().isOn;
+                bool isMirror = userItem.transform.Find("Panel/Mirror").GetComponent<Toggle>().isOn;
+                int option = userItem.transform.Find("Panel/DisplayOption").GetComponent<Dropdown>().value;
+                RCRTCViewFitType fitType = getViewFitType(option);
+                if (custom)
+                {
+                    Engine.OnCustomStreamSubscribed = delegate (string userId, string tag, RCRTCMediaType type, int code,
+                                                          string errMsg)
+                    {
+                        Engine.OnCustomStreamSubscribed = null;
+                        RunOnMainThread.Enqueue(() =>
+                        {
+                            ExampleUtils.HideLoading();
+                            if (code != 0)
+                            {
+                                ExampleUtils.ShowToast(errMsg);
+                            }
+                            else
+                            {
+                                UserSubscribeVideoStates[$"{userId}#{tag}"] = true;
+                                video.transform.Find("Text").GetComponent<Text>().text = "取消订阅视频";
+                                var view = userItem.transform.Find("Panel").GetComponent<RCRTCView>();
+                                view.Mirror = isMirror;
+                                view.FitType = fitType;
+                                Engine.SetRemoteCustomStreamView(userId, tag, view);
+                            }
+                        });
+                    };
+                    string[] array = id.Split('#');
+                    int ret = Engine.SubscribeCustomStream(array[0], array[1], RCRTCMediaType.VIDEO, isTiny);
+                    if (ret != 0)
+                    {
+                        ExampleUtils.HideLoading();
+                        ExampleUtils.ShowToast($"订阅失败 code:{ret}");
+                    }
+                }
+                else
+                {
+                    Engine.OnSubscribed = delegate (String remoteUserId, RCRTCMediaType type, int code, String message)
+                    {
+                        Engine.OnSubscribed = null;
+
+                        RunOnMainThread.Enqueue(() =>
+                        {
+                            ExampleUtils.HideLoading();
+                            if (code != 0)
+                            {
+                                ExampleUtils.ShowToast(message);
+                            }
+                            else
+                            {
+                                UserSubscribeVideoStates[remoteUserId] = true;
+                                video.transform.Find("Text").GetComponent<Text>().text = "取消订阅视频";
+                                var view = userItem.transform.Find("Panel").GetComponent<RCRTCView>();
+                                view.Mirror = isMirror;
+                                view.FitType = fitType;
+                                Engine.SetRemoteView(id, view);
+                            }
+                        });
+                    };
+
+                    int ret = Engine.Subscribe(id, RCRTCMediaType.VIDEO, isTiny);
+                    if (ret != 0)
+                    {
+                        ExampleUtils.HideLoading();
+                        ExampleUtils.ShowToast("Error" + ret);
+                    }
+                }
+            }
+            else
+            {
+                if (custom)
+                {
+                    Engine.OnCustomStreamUnsubscribed = delegate (string userId, string tag, RCRTCMediaType type, int code,
+                                                          string errMsg)
+                    {
+                        Engine.OnCustomStreamUnsubscribed = null;
+
+                        RunOnMainThread.Enqueue(() =>
+                        {
+                            ExampleUtils.HideLoading();
+                            if (code != 0)
+                            {
+                                ExampleUtils.ShowToast(errMsg);
+                            }
+                            else
+                            {
+                                UserSubscribeVideoStates[$"{userId}#{tag}"] = false;
+                                video.transform.Find("Text").GetComponent<Text>().text = "订阅视频";
+                                Engine.RemoveRemoteCustomStreamView(userId, tag);
+                            }
+                        });
+                    };
+                    string[] array = id.Split('#');
+                    int ret = Engine.UnsubscribeCustomStream(array[0], array[1], RCRTCMediaType.VIDEO);
+                    if (ret != 0)
+                    {
+                        ExampleUtils.HideLoading();
+                        ExampleUtils.ShowToast($"取消订阅失败 code:{ret}");
+                    }
+                }
+                else
+                {
+                    Engine.OnUnsubscribed = delegate (String remoteUserId, RCRTCMediaType type, int code, String message)
+                    {
+                        Engine.OnUnsubscribed = null;
+
+                        RunOnMainThread.Enqueue(() =>
+                        {
+                            ExampleUtils.HideLoading();
+                            if (code != 0)
+                            {
+                                ExampleUtils.ShowToast(message);
+                            }
+                            else
+                            {
+                                UserSubscribeVideoStates[remoteUserId] = false;
+                                video.transform.Find("Text").GetComponent<Text>().text = "订阅视频";
+                                Engine.RemoveRemoteView(id);
+                            }
+                        });
+                    };
+                    int ret = Engine.Unsubscribe(id, RCRTCMediaType.VIDEO);
+                    if (ret != 0)
+                    {
+                        ExampleUtils.HideLoading();
+                        ExampleUtils.ShowToast("Error" + ret);
+                    }
+                }
             }
         }
 
-        private void RemoveAudioStats(GameObject table)
+        #endregion
+
+        #region Private Methods
+
+        #region 连接页面
+        private void GenerateToken()
         {
-            var audio = table.transform.Find("Audio").gameObject;
-            if (audio != null)
+            ExampleUtils.ShowLoading();
+            TimeSpan time = DateTime.Now.ToUniversalTime() - new DateTime(1970, 1, 1, 0, 0, 0, 0);
+            String current = Convert.ToInt64(time.TotalMilliseconds).ToString();
+            String id = ExampleConfig.Prefix + current;
+            String url = ExampleConfig.Host + "/token/" + id;
+            String json = "{\"key\":\"" + ExampleConfig.AppKey + "\"}";
+            Post(url, json, (bool error, String result) =>
             {
-                Destroy(audio);
-                Statses.Remove("Audio");
-            }
+                ExampleUtils.HideLoading();
+                if (!error)
+                {
+                    Debug.Log("result:" + result);
+                    User = JsonUtility.FromJson<LoginData>(result);
+                    User.userId = ExampleConfig.Prefix + current;
+                    ConnectCanvasTokenInput.text = User.Token;
+                }
+                else
+                {
+                    ExampleUtils.ShowToast(result);
+                }
+            });
         }
 
+        private void ConnectIM(string token)
+        {
+            if (imEngine != null)
+            {
+                imEngine.Disconnect(false);
+                imEngine.Destroy();
+                imEngine = null;
+            }
+
+            RCIMEngineOptions options = new RCIMEngineOptions();
+            options.naviServer = ExampleConfig.NavServer;
+            options.fileServer = ExampleConfig.FileServer;
+#if UNITY_ANDROID
+            options.enablePush = mPushEnabled;
+            options.enableIPC = mDisableIPC;
+#endif
+            imEngine = RCIMEngine.Create(ExampleConfig.AppKey, options);
+#if !UNITY_EDITOR
+            imEngine.OnMessageSent += OnSendMessageSent;
+            imEngine.OnMessageReceived += OnIMReceivedMessage;
+#endif
+            imEngine.OnConnected = delegate (int code, string userId) {
+                User.Name = userId;
+                imEngine.OnConnected = null;
+                if (code == (int)RCIMErrorCode.SUCCESS)
+                {
+                    RunOnMainThread.Enqueue(() =>
+                    {
+                        ExampleUtils.HideLoading();
+                        SaveTokenInfo();
+                        ChangeToConnected();
+                    });
+                }
+                else
+                {
+                    RunOnMainThread.Enqueue(() =>
+                    {
+                        ExampleUtils.HideLoading();
+                        ExampleUtils.ShowToast("IM Connect Error, Code = " + code);
+                    });
+                }
+            };
+            imEngine.Connect(token, 30);
+        }
+
+        private void StopEchoTest()
+        {
+            if (EchoTest)
+            {
+                int ret = Engine.StopEchoTest();
+                if (ret == 0)
+                {
+                    EchoTest = false;
+                    EchoTestDeltaTime = 0;
+                    Text button = GameObject.Find("/EchoTest/Start/Text").GetComponent<Text>();
+                    button.text = "开始检测";
+                    Text countDown = GameObject.Find("/EchoTest/CountDown").GetComponent<Text>();
+                    countDown.text = "";
+                    Text tip = GameObject.Find("/EchoTest/Tip").GetComponent<Text>();
+                    tip.text = "";
+                    Engine.Destroy();
+                    Engine = null;
+                }
+                else
+                {
+                    ExampleUtils.ShowToast("停止失败");
+                }
+            }
+        }
+        #endregion
+
+        #region 模式切换
         private void InitSelectedRoomMode(RoomStreamConfigPrefab.RoomMode roomMode)
         {
             if (roomMode == RoomStreamConfigPrefab.RoomMode.MeetingRoom)
@@ -2020,7 +2809,7 @@ namespace cn_rongcloud_rtc_unity_example
             else if (roomMode == RoomStreamConfigPrefab.RoomMode.HostRoom)
             {
                 Role = RCRTCRole.LIVE_BROADCASTER;
-                ConnectedCanvasModeGroup.transform.Find("HostMode").GetComponent<Toggle>().isOn = true; 
+                ConnectedCanvasModeGroup.transform.Find("HostMode").GetComponent<Toggle>().isOn = true;
             }
             else if (roomMode == RoomStreamConfigPrefab.RoomMode.AudienceRoom)
             {
@@ -2028,7 +2817,7 @@ namespace cn_rongcloud_rtc_unity_example
                 ConnectedCanvasModeGroup.transform.Find("AudienceMode").GetComponent<Toggle>().isOn = true;
             }
         }
-        
+
         private void ChangeToUnconnect()
         {
             ConnectCanvas.SetActive(true);
@@ -2092,8 +2881,6 @@ namespace cn_rongcloud_rtc_unity_example
             Camera = false;
             PublishAudio = false;
 
-            PlayBackgroundMusic = false;
-
             Speaker = false;
 
             ConnectCanvas.SetActive(false);
@@ -2107,7 +2894,6 @@ namespace cn_rongcloud_rtc_unity_example
             MeetingCanvasEnableMicrophoneSwitchInfo.text = Microphone ? "关闭麦克风" : "开启麦克风";
             MeetingCanvasEnableCameraSwitchInfo.text = Camera ? "关闭摄像头" : "开启摄像头";
             MeetingCanvasPublishAudioSwitchInfo.text = PublishAudio ? "取消发送音频" : "发送音频";
-            MeetingCanvasPlayBackgroundMusicSwitchInfo.text = PlayBackgroundMusic ? "停止背景音乐" : "播放背景音乐";
 
             MeetingCanvasSwitchAudioOutputInfo.text = Speaker ? "扬声器" : "听筒";
 
@@ -2131,7 +2917,7 @@ namespace cn_rongcloud_rtc_unity_example
             }, (stats) =>
             {
                 RunOnMainThread.Enqueue(() => { ChangeLocalVideoStats(MeetingCanvasStatsTable, stats); });
-            },  (String userId, RCRTCRemoteAudioStats stats) =>
+            }, (String userId, RCRTCRemoteAudioStats stats) =>
             {
                 RunOnMainThread.Enqueue(() =>
                 {
@@ -2188,8 +2974,6 @@ namespace cn_rongcloud_rtc_unity_example
             HostCanvasSwitchAudioOutputInfo.text = "扬声器列表";
 #endif
 
-            HostCanvasConfigCDN.interactable = false;
-
             Engine.SetStatsListener(new StatsListenerProxy((RCRTCNetworkStats stats) =>
             {
                 RunOnMainThread.Enqueue(() =>
@@ -2240,6 +3024,7 @@ namespace cn_rongcloud_rtc_unity_example
             InChatRoom = false;
             CloseMessagePanel = false;
             AudienceIsSubscribed = false;
+            InnerCdnIsSubscribed = false;
 
             ConnectCanvas.SetActive(false);
             MeetingCanvas.SetActive(false);
@@ -2269,7 +3054,7 @@ namespace cn_rongcloud_rtc_unity_example
                 });
             }, (stats) =>
             {
-                RunOnMainThread.Enqueue(()=>{ ChangeRemoteVideoStats(AudienceCanvasStatsTable, stats);});
+                RunOnMainThread.Enqueue(() => { ChangeRemoteVideoStats(AudienceCanvasStatsTable, stats); });
             }));
 
 #if UNITY_STANDALONE_WIN
@@ -2283,48 +3068,158 @@ namespace cn_rongcloud_rtc_unity_example
 #endif
         }
 
-        private bool CheckMicrophonePermission()
+        private void resetAudienceUI()
         {
-#if UNITY_STANDALONE_WIN
-            if (!Application.HasUserAuthorization(UserAuthorization.Microphone))
-            {
-                Application.RequestUserAuthorization(UserAuthorization.Microphone);
-                return false;
-            }
-#endif
-#if PLATFORM_ANDROID
-            if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))
-            {
-                Permission.RequestUserPermission(Permission.Microphone);
-                return false;
-            }
-#endif
-            return true;
+            AudienceUISelectedMediaType = RCRTCMediaType.AUDIO;
+            AudienceAudioToggle.isOn = true;
+            AudienceVideoToggle.isOn = false;
+            AudienceAudioVideoToggle.isOn = false;
+            AudienceTinyStream.isOn = false;
+            AudienceTinyStream.gameObject.SetActive(false);
+            AudienceCanvas.transform.Find("SubscribeCDN/Text").GetComponent<Text>().text = "订阅";
+            AudienceCanvas.transform.Find("MuteCDN").GetComponent<Toggle>().isOn = false;
+            GameObject.Find("Audience/SEI").GetComponent<Text>().text = "SEI:";
         }
 
-        private bool CheckCameraPermission()
+        private void resetMeetingUI()
         {
+            Microphone = false;
+            MeetingCanvasEnableMicrophoneSwitchInfo.text = Microphone ? "关闭麦克风" : "开启麦克风";
+
+            PublishAudio = false;
+            MeetingCanvasPublishAudioSwitchInfo.text = PublishAudio ? "取消发布音频" : "发布音频";
+
+            Speaker = false;
+            MeetingCanvasSwitchAudioOutputInfo.text = Speaker ? "扬声器" : "听筒";
+
+            Camera = false;
+            MeetingCanvasEnableCameraSwitchInfo.text = Camera ? "关闭摄像头" : "开启摄像头";
+
+            PublishVideo = false;
+            MeetingPublishVideoText.text = PublishVideo ? "取消发布视频" : "发布视频";
+
 #if UNITY_STANDALONE_WIN
-            if (!Application.HasUserAuthorization(UserAuthorization.WebCam))
-            {
-                Application.RequestUserAuthorization(UserAuthorization.WebCam);
-                return false;
-            }
+            MeetingCanvasEnableMicrophoneSwitchInfo.text = "麦克风列表";
+            MeetingCanvasSwitchAudioOutputInfo.text = "扬声器列表";
 #endif
-#if PLATFORM_ANDROID
-            if (!Permission.HasUserAuthorizedPermission(Permission.Camera))
-            {
-                Permission.RequestUserPermission(Permission.Camera);
-                return false;
-            }
-#endif
-            return true;
         }
 
+        private void resetHostUI()
+        {
+            Microphone = false;
+            HostCanvasEnableMicrophoneSwitchInfo.text = Microphone ? "关闭麦克风" : "开启麦克风";
+
+            PublishAudio = false;
+            HostCanvasPublishAudioSwitchInfo.text = PublishAudio ? "取消发布音频" : "发布音频";
+
+            Speaker = false;
+            HostCanvasSwitchAudioOutputInfo.text = Speaker ? "扬声器" : "听筒";
+
+            Camera = false;
+            HostCanvasEnableCameraSwitchInfo.text = Camera ? "关闭摄像头" : "开启摄像头";
+
+            PublishVideo = false;
+            HostPublishVideoText.text = PublishVideo ? "取消发布视频" : "发布视频";
+
+            Sei = false;
+            SeiDeltaTime = 0;
+            SeiCountDown = 0;
+            SeiCanvas.transform.Find("Switch").GetComponent<Toggle>().isOn = false;
+            SeiCanvas.transform.Find("Start/Text").GetComponent<Text>().text = "发送";
+
+            filePath = null;
+            GameObject.Find("/Host/CustomStream/Text").GetComponent<Text>().text = "已选文件：";
+
+            JoinedSubRooms.Clear();
+            BandedSubRooms.Clear();
+            JoinableSubRooms.Clear();
+            ReloadSubRoomList();
+#if UNITY_STANDALONE_WIN
+            HostCanvasEnableMicrophoneSwitchInfo.text = "麦克风列表";
+            HostCanvasSwitchAudioOutputInfo.text = "扬声器列表";
+#endif
+        }
+
+        private void SwitchRole(RCRTCRole role)
+        {
+            Engine.SetStatsListener(null);
+            var statses = Statses.Values;
+            foreach (GameObject stats in statses)
+            {
+                Destroy(stats);
+            }
+            Statses.Clear();
+
+            var cdns = CDNs.Values;
+            foreach (GameObject cdn in cdns)
+            {
+                Destroy(cdn);
+            }
+            CDNs.Clear();
+
+            foreach (GameObject cdn in SelectedCDNs)
+            {
+                Destroy(cdn);
+            }
+            SelectedCDNs.Clear();
+            switch (role)
+            {
+                case RCRTCRole.MEETING_MEMBER:
+                    Engine.OnUserJoined = MeetingOnUserJoined;
+                    Engine.OnUserOffline = MeetingOnUserOffline;
+                    Engine.OnUserLeft = MeetingOnUserLeft;
+
+                    Engine.OnRemotePublished = MeetingOnRemotePublished;
+                    Engine.OnRemoteUnpublished = MeetingOnRemoteUnpublished;
+                    break;
+                case RCRTCRole.LIVE_BROADCASTER:
+                    Engine.OnSubRoomBanded = OnSubRoomBanded;
+                    Engine.OnSubRoomDisband = OnSubRoomDisband;
+                    Engine.OnJoinSubRoomRequestReceived = OnJoinSubRoomRequestReceived;
+                    Engine.OnJoinSubRoomRequestResponseReceived = OnJoinSubRoomRequestResponseReceived;
+                    Engine.OnRemoteCustomStreamPublished = OnRemoteCustomStreamPublished;
+                    Engine.OnRemoteCustomStreamUnpublished = OnRemoteCustomStreamUnpublished;
+                    Engine.OnSeiReceived = OnSeiReceived;
+                    Engine.OnRemoteLiveRoleSwitched = OnRemoteLiveRoleSwitched;
+                    ChangeToHost(RoomId);
+                    resetHostUI();
+                    break;
+                case RCRTCRole.LIVE_AUDIENCE:
+                    Engine.OnRemoteLiveMixPublished = AudienceOnRemoteLiveMixPublished;
+                    Engine.OnRemoteLiveMixUnpublished = AudienceOnRemoteLiveMixUnpublished;
+                    Engine.OnLiveMixSeiReceived = OnLiveMixSeiReceived;
+                    ReloadHostUserList();
+                    ChangeToAudience(RoomId);
+                    resetAudienceUI();
+                    break;
+            }
+        }
+        #endregion
+
+        #region 网络状态
+        private void RemoveVideoStats(GameObject table)
+        {
+            var video = table.transform.Find("Video").gameObject;
+            if (video != null)
+            {
+                Destroy(video);
+                Statses.Remove("Video");
+            }
+        }
+
+        private void RemoveAudioStats(GameObject table)
+        {
+            var audio = table.transform.Find("Audio").gameObject;
+            if (audio != null)
+            {
+                Destroy(audio);
+                Statses.Remove("Audio");
+            }
+        }
         private void ChangeNetworkStats(GameObject table, RCRTCNetworkStats stats)
         {
-            Transform network;
-            if (!Statses.ContainsKey("Network"))
+            Transform network = table.transform.Find("Network");
+            if (network == null)
             {
                 GameObject item = GameObject.Instantiate(NetworkStatsPrefab, table.transform) as GameObject;
                 item.name = "Network";
@@ -2337,12 +3232,12 @@ namespace cn_rongcloud_rtc_unity_example
                     RectTransform rect = table.GetComponent<RectTransform>();
                     rect.sizeDelta = new Vector2(rect.sizeDelta.x, current.rect.height - y);
                 }
+                if (Statses.ContainsKey("Network"))
+                {
+                    Statses.Remove("Network");
+                }
                 Statses.Add("Network", item);
                 network = item.transform;
-            }
-            else
-            {
-                network = table.transform.Find("Network");
             }
             network.Find("Type").GetComponent<Text>().text = "网络类型：" + stats.Type;
             network.Find("Ip").GetComponent<Text>().text = "IP：" + stats.Ip;
@@ -2377,7 +3272,7 @@ namespace cn_rongcloud_rtc_unity_example
             audio.Find("Bitrate").GetComponent<Text>().text = "码率：" + stats.Bitrate + "kbps";
             audio.Find("PackageLostRate").GetComponent<Text>().text = "丢包率：" + stats.PackageLostRate + "%";
         }
-        
+
         private void ChangeLocalVideoStats(GameObject table, RCRTCLocalVideoStats stats)
         {
             Transform video;
@@ -2409,14 +3304,14 @@ namespace cn_rongcloud_rtc_unity_example
                 video.Find("TinyBitrate").GetComponent<Text>().text = stats.Bitrate + "kbps";
                 video.Find("TinyResolution").GetComponent<Text>().text = stats.Width + "X" + stats.Height;
                 video.Find("TinyFps").GetComponent<Text>().text = stats.Fps + "fps";
-                video.Find("TinyPackageLostRate").GetComponent<Text>().text = "丢包率：" + stats.PackageLostRate + "%";   
+                video.Find("TinyPackageLostRate").GetComponent<Text>().text = "丢包率：" + stats.PackageLostRate + "%";
             }
             else
             {
                 video.Find("Bitrate").GetComponent<Text>().text = stats.Bitrate + "kbps";
                 video.Find("Resolution").GetComponent<Text>().text = stats.Width + "X" + stats.Height;
                 video.Find("Fps").GetComponent<Text>().text = stats.Fps + "fps";
-                video.Find("PackageLostRate").GetComponent<Text>().text = "丢包率：" + stats.PackageLostRate + "%";  
+                video.Find("PackageLostRate").GetComponent<Text>().text = "丢包率：" + stats.PackageLostRate + "%";
             }
         }
 
@@ -2476,25 +3371,497 @@ namespace cn_rongcloud_rtc_unity_example
             video.Find("Bitrate").GetComponent<Text>().text = stats.Bitrate + "kbps";
             video.Find("Resolution").GetComponent<Text>().text = stats.Width + "X" + stats.Height;
             video.Find("Fps").GetComponent<Text>().text = stats.Fps + "fps";
-            video.Find("PackageLostRate").GetComponent<Text>().text = "丢包率：" + stats.PackageLostRate + "%";  
+            video.Find("PackageLostRate").GetComponent<Text>().text = "丢包率：" + stats.PackageLostRate + "%";
         }
-       
+        #endregion
+
+        #region CDN
+        private void LoadCDNs()
+        {
+            ExampleUtils.ShowLoading();
+            String url = ExampleConfig.Host + "/cdns";
+            Get(url, (bool error, String result) =>
+            {
+                if (!error)
+                {
+                    Dictionary<String, String> cdns = JsonConvert.DeserializeObject<Dictionary<String, String>>(result);
+                    foreach (String key in cdns.Keys)
+                    {
+                        String value;
+                        if (cdns.TryGetValue(key, out value))
+                        {
+                            CDN cdn = new CDN(key, value);
+                            AddCDN(cdn);
+                        }
+                    }
+                    ConfigCDNCanvasDialog.SetActive(true);
+                }
+                else
+                {
+                    ExampleUtils.ShowToast("Load CDN List Error: " + result);
+                }
+                ExampleUtils.HideLoading();
+            });
+        }
+
+        private void AddCDN(CDN cdn)
+        {
+            GameObject item = GameObject.Instantiate(CDNSelectorPrefab, ConfigCDNCanvasDialogCDNList.transform) as GameObject;
+            item.GetComponent<Button>().onClick.AddListener(() =>
+            {
+                LoadCND(cdn.id);
+            });
+            item.transform.Find("Text").GetComponent<Text>().text = cdn.name;
+            RectTransform rect = ConfigCDNCanvasDialogCDNList.GetComponent<RectTransform>();
+            RectTransform current = item.GetComponent<RectTransform>();
+            if (CDNs.Values.Count > 0)
+            {
+                RectTransform last = ConfigCDNCanvasDialogCDNList.transform.GetChild(CDNs.Values.Count - 1).gameObject.GetComponent<RectTransform>();
+                item.GetComponent<RectTransform>().localPosition = new Vector3(last.localPosition.x, last.localPosition.y - last.rect.height - 10, last.localPosition.z);
+                rect.sizeDelta = new Vector2(rect.sizeDelta.x, rect.rect.height + current.rect.height + 10);
+            }
+            else
+            {
+                rect.sizeDelta = new Vector2(rect.sizeDelta.x, current.rect.height);
+            }
+            CDNs.Add(cdn, item);
+        }
+
+        private void LoadCND(String id)
+        {
+            String sessionId = Engine.GetSessionId();
+            if (String.IsNullOrEmpty(sessionId))
+            {
+                ExampleUtils.ShowToast("Get Session Id Null, Please try later.");
+                return;
+            }
+            ExampleUtils.ShowLoading();
+            String url = ExampleConfig.Host + "/cdn/" + id + "/sealLive/" + sessionId;
+            Get(url, (bool error, String result) =>
+            {
+                if (!error)
+                {
+                    Debug.Log("CDN = " + result);
+
+                    CDNInfo cdn = JsonUtility.FromJson<CDNInfo>(result);
+
+                    Engine.OnLiveCdnAdded = delegate (String liveUrl, int code, String message)
+                    {
+                        Engine.OnLiveCdnAdded = null;
+
+                        RunOnMainThread.Enqueue(() =>
+                        {
+                            ExampleUtils.HideLoading();
+                            if (code != 0)
+                            {
+                                ExampleUtils.ShowToast("Add Live Cdn Error: " + message);
+                            }
+                            else
+                            {
+                                AddCDN(cdn);
+                                ConfigCDNCanvasDialog.SetActive(false);
+                            };
+                        });
+                    };
+                    int ret = Engine.AddLiveCdn(cdn.push);
+                    if (ret != 0)
+                    {
+                        ExampleUtils.HideLoading();
+                        ExampleUtils.ShowToast("Add Live Cdn Error " + ret);
+                    }
+                }
+                else
+                {
+                    ExampleUtils.HideLoading();
+                    ExampleUtils.ShowToast("Load CDN Url Error: " + result);
+                }
+            });
+        }
+
+        private void AddCDN(CDNInfo cdn)
+        {
+            GameObject item = GameObject.Instantiate(CDNItemPrefab, ConfigCDNCanvasCDNList.transform) as GameObject;
+            item.name = cdn.push;
+            item.transform.Find("Delete").GetComponent<Button>().onClick.AddListener(() =>
+            {
+                RemoveCDN(item);
+            });
+            item.transform.Find("Info").GetComponent<Text>().text = "RTMP: " + cdn.rtmp + "\nHSL: " + cdn.hls + "\nFLV: " + cdn.flv;
+            RectTransform rect = ConfigCDNCanvasCDNList.GetComponent<RectTransform>();
+            RectTransform current = item.GetComponent<RectTransform>();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(current);
+            float height = LayoutUtility.GetPreferredSize(current, 1);
+            if (SelectedCDNs.Count > 0)
+            {
+                RectTransform last = ConfigCDNCanvasCDNList.transform.GetChild(SelectedCDNs.Count - 1).gameObject.GetComponent<RectTransform>();
+                item.GetComponent<RectTransform>().localPosition = new Vector3(last.localPosition.x, last.localPosition.y - last.rect.height - 10, last.localPosition.z);
+                rect.sizeDelta = new Vector2(rect.sizeDelta.x, rect.rect.height + height + 10);
+            }
+            else
+            {
+                rect.sizeDelta = new Vector2(rect.sizeDelta.x, height);
+            }
+            SelectedCDNs.Add(item);
+        }
+
+        private void RemoveCDN(GameObject cdn)
+        {
+            ExampleUtils.ShowLoading();
+            Engine.OnLiveCdnRemoved = delegate (String url, int code, String message)
+            {
+                Engine.OnLiveCdnRemoved = null;
+
+                RunOnMainThread.Enqueue(() =>
+                {
+                    ExampleUtils.HideLoading();
+                    if (code != 0)
+                    {
+                        ExampleUtils.ShowToast("Remove Live Cdn Error: " + message);
+                    }
+                    else
+                    {
+                        SelectedCDNs.Remove(cdn);
+                        Destroy(cdn);
+
+                        float height = 0;
+                        foreach (GameObject child in SelectedCDNs)
+                        {
+                            RectTransform transform = child.GetComponent<RectTransform>();
+                            transform.localPosition = new Vector3(transform.localPosition.x, -height, transform.localPosition.z);
+                            height += transform.rect.height + 10;
+                        }
+                        if (height > 0)
+                        {
+                            RectTransform rect = ConfigCDNCanvasCDNList.GetComponent<RectTransform>();
+                            rect.sizeDelta = new Vector2(rect.sizeDelta.x, height);
+                        }
+                    }
+                });
+            };
+            int ret = Engine.RemoveLiveCdn(cdn.name);
+            if (ret != 0)
+            {
+                ExampleUtils.HideLoading();
+                ExampleUtils.ShowToast("Remove Live Cdn Error " + ret);
+            }
+        }
+        #endregion
+
+        #region 自定义视频合流布局
+
+        public GameObject CustomVideoLayoutList;
+        public GameObject CustomVideoLayoutListItem;
+
+        private readonly IList<RCRTCCustomLayout> _videoCustomLayouts = new List<RCRTCCustomLayout>();
+
+        private IList<GameObject> _videoCustomLayoutsGameObjects = new List<GameObject>();
+
+        private void RefreshCustomVideoLayoutList()
+        {
+            RunOnMainThread.Enqueue(() =>
+            {
+                CustomVideoLayoutList =
+                    GameObject.Find("/HostMixVideoCustomLayoutConfig/Background/CustomVideoLayoutConfigList/Viewport/Content");
+
+                var customVideoLayoutListItems =
+                    (from Transform child in CustomVideoLayoutList.transform select child.gameObject).ToList();
+                customVideoLayoutListItems.ForEach(Destroy);
+                _videoCustomLayoutsGameObjects.Clear();
+
+                if (_videoCustomLayouts == null || _videoCustomLayouts.Count == 0)
+                    return;
+
+                foreach (var item in _videoCustomLayouts)
+                {
+                    AddCustomVideoLayoutListItem(item);
+                }
+            });
+        }
+
+        private void AddCustomVideoLayoutListItem(RCRTCCustomLayout layout)
+        {
+            if (layout == null)
+                return;
+
+            GameObject item =
+                GameObject.Instantiate(CustomVideoLayoutListItem, CustomVideoLayoutList.transform) as GameObject;
+            item.transform.Find("LayoutInfo").GetComponent<Text>().text =
+                $" User: {layout.GetUserId()} {Environment.NewLine} Position: [{layout.GetX()}, {layout.GetY()}] Width: {layout.GetWidth()} Height: {layout.GetHeight()}";
+            item.transform.Find("Remove").GetComponent<Button>().onClick.AddListener(() =>
+            {
+                _videoCustomLayouts.Remove(layout);
+                RefreshCustomVideoLayoutList();
+            });
+
+            RectTransform rect = CustomVideoLayoutList.GetComponent<RectTransform>();
+            RectTransform current = item.GetComponent<RectTransform>();
+            if (_videoCustomLayoutsGameObjects.Count > 0)
+            {
+                RectTransform last = CustomVideoLayoutList.transform.GetChild(_videoCustomLayoutsGameObjects.Count - 1)
+                    .gameObject
+                    .GetComponent<RectTransform>();
+                item.GetComponent<RectTransform>().localPosition = new Vector3(last.localPosition.x,
+                    last.localPosition.y - last.rect.height - 10, last.localPosition.z);
+                rect.sizeDelta = new Vector2(rect.sizeDelta.x, rect.rect.height + current.rect.height + 10);
+            }
+            else
+            {
+                rect.sizeDelta = new Vector2(rect.sizeDelta.x, current.rect.height);
+            }
+
+            _videoCustomLayoutsGameObjects.Add(item);
+        }
+
+        #endregion
+
+        #region 自定义音频合流
+
+        public GameObject CustomAudioMixList;
+        public GameObject CustomAudioMixListItem;
+
+        private readonly IList<String> _audioMixUserList = new List<String>();
+
+        private IList<GameObject> _audioMixUserListsGameObjects = new List<GameObject>();
+
+        private void RefreshCustomAudioMixUserList()
+        {
+            RunOnMainThread.Enqueue(() =>
+            {
+                CustomAudioMixList =
+                    GameObject.Find("/HostMixAudioCustomConfig/Background/CustomLiveMixAudioUserList/Viewport/Content");
+
+                var customVideoLayoutListItems =
+                    (from Transform child in CustomAudioMixList.transform select child.gameObject).ToList();
+                customVideoLayoutListItems.ForEach(Destroy);
+                _audioMixUserListsGameObjects.Clear();
+
+                if (_audioMixUserList == null || _audioMixUserList.Count == 0)
+                    return;
+
+                foreach (var item in _audioMixUserList)
+                {
+                    AddCustomAudioMixUserListItem(item);
+                }
+            });
+        }
+
+        private void AddCustomAudioMixUserListItem(string audioMixUser)
+        {
+            if (String.IsNullOrEmpty(audioMixUser))
+                return;
+
+            GameObject item =
+                GameObject.Instantiate(CustomAudioMixListItem, CustomAudioMixList.transform) as GameObject;
+            item.transform.Find("LayoutInfo").GetComponent<Text>().text =
+                $" User: {audioMixUser}";
+            item.transform.Find("Remove").GetComponent<Button>().onClick.AddListener(() =>
+            {
+                _audioMixUserList.Remove(audioMixUser);
+                RefreshCustomAudioMixUserList();
+            });
+
+            RectTransform rect = CustomAudioMixList.GetComponent<RectTransform>();
+            RectTransform current = item.GetComponent<RectTransform>();
+            if (_audioMixUserListsGameObjects.Count > 0)
+            {
+                RectTransform last = CustomAudioMixList.transform.GetChild(_audioMixUserListsGameObjects.Count - 1)
+                    .gameObject
+                    .GetComponent<RectTransform>();
+                item.GetComponent<RectTransform>().localPosition = new Vector3(last.localPosition.x,
+                    last.localPosition.y - last.rect.height - 10, last.localPosition.z);
+                rect.sizeDelta = new Vector2(rect.sizeDelta.x, rect.rect.height + current.rect.height + 10);
+            }
+            else
+            {
+                rect.sizeDelta = new Vector2(rect.sizeDelta.x, current.rect.height);
+            }
+
+            _audioMixUserListsGameObjects.Add(item);
+        }
+
+        #endregion
+
+        #region 跨房间连麦
+        private void ResponseRequest(string roomId, string userId, bool agree)
+        {
+            int ret = Engine.ResponseJoinSubRoomRequest(roomId, userId, agree, true, null);
+            if (ret == 0 && agree)
+            {
+                JoinSubRoom(roomId);
+            }
+            else
+            {
+                ExampleUtils.ShowToast($"响应加入房间请求错误 code:{ret}");
+            }
+        }
+
+        private void JoinSubRoom(string roomId)
+        {
+            ExampleUtils.ShowLoading();
+            Engine.OnSubRoomJoined = delegate (string roomId, int code, string errMsg)
+            {
+                Engine.OnSubRoomJoined = null;
+                RunOnMainThread.Enqueue(() =>
+                {
+                    ExampleUtils.HideLoading();
+                    if (code != 0)
+                    {
+                        ExampleUtils.ShowToast($"加入{roomId}子房间失败, code:{code} message:{errMsg}");
+                    }
+                    else
+                    {
+                        if (!JoinedSubRooms.Contains(roomId))
+                        {
+                            JoinedSubRooms.Add(roomId);
+                            ReloadSubRoomList();
+                        }
+                        ExampleUtils.ShowToast($"加入{roomId}子房间成功");
+                    }
+                });
+            };
+            int ret = Engine.JoinSubRoom(roomId);
+            if (ret != 0)
+            {
+                Engine.OnSubRoomJoined = null;
+                ExampleUtils.HideLoading();
+                ExampleUtils.ShowToast($"加入{roomId}子房间失败, code:{ret}");
+            }
+        }
+
+        private void LeaveSubRoom(string roomId, bool disband)
+        {
+            ExampleUtils.ShowLoading();
+            Engine.OnSubRoomLeft = delegate (string roomId, int code, string errMsg)
+            {
+                Engine.OnSubRoomLeft = null;
+                RunOnMainThread.Enqueue(() =>
+                {
+                    ExampleUtils.HideLoading();
+                    if (code != 0)
+                    {
+                        ExampleUtils.ShowToast($"离开{roomId}子房间失败, code:{code} message:{errMsg}");
+                    }
+                    else
+                    {
+                        if (disband)
+                        {
+                            if (BandedSubRooms.Contains(roomId))
+                            {
+                                BandedSubRooms.Remove(roomId);
+                            }
+                        }
+                        if (JoinedSubRooms.Contains(roomId))
+                        {
+                            JoinedSubRooms.Remove(roomId);
+                        }
+                        ReloadSubRoomList();
+                        ExampleUtils.ShowToast($"离开{roomId}子房间成功");
+                    }
+                });
+            };
+            int ret = Engine.LeaveSubRoom(roomId, disband);
+            if (ret != 0)
+            {
+                Engine.OnSubRoomLeft = null;
+                ExampleUtils.HideLoading();
+                ExampleUtils.ShowToast($"离开{roomId}子房间失败, code:{ret}");
+            }
+        }
+
+        private void ReloadSubRoomList()
+        {
+            JoinableSubRooms.Clear();
+            BandedSubRooms.ForEach((roomId) => {
+                if (!JoinedSubRooms.Contains(roomId))
+                {
+                    JoinableSubRooms.Add(roomId);
+                }
+            });
+            Transform joined = SubRoomCanvas.transform.Find("List/Joined");
+            Transform joinable = SubRoomCanvas.transform.Find("List/SubRooms");
+            for (int i = 0; i < joined.childCount; i++)
+            {
+                Destroy(joined.GetChild(i).gameObject);
+            }
+            for (int i = 0; i < joinable.childCount; i++)
+            {
+                Destroy(joinable.GetChild(i).gameObject);
+            }
+            foreach (var item in JoinedSubRooms)
+            {
+                GameObject cell = Instantiate(JoinedSubRoomPrefab, joined);
+                cell.transform.Find("Info").GetComponent<Text>().text = item;
+                cell.transform.Find("Leave").GetComponent<Button>().onClick.AddListener(() => {
+                    LeaveSubRoom(item, false);
+                });
+                cell.transform.Find("Destory").GetComponent<Button>().onClick.AddListener(() => {
+                    LeaveSubRoom(item, true);
+                });
+            }
+            foreach (var item in JoinableSubRooms)
+            {
+                GameObject cell = Instantiate(SubRoomPrefab, joinable);
+                cell.transform.Find("Info").GetComponent<Text>().text = item;
+                cell.transform.Find("Join").GetComponent<Button>().onClick.AddListener(() =>
+                {
+                    JoinSubRoom(item);
+                });
+            }
+        }
+        #endregion
+
+        #region 自定义流
+        private string StreamTag()
+        {
+            return User.Id.Replace(ExampleConfig.Prefix, "custom");
+        }
+        #endregion
+
+        private bool CheckMicrophonePermission()
+        {
+#if UNITY_STANDALONE_WIN
+            if (!Application.HasUserAuthorization(UserAuthorization.Microphone))
+            {
+                Application.RequestUserAuthorization(UserAuthorization.Microphone);
+                return false;
+            }
+#endif
+#if PLATFORM_ANDROID
+            if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))
+            {
+                Permission.RequestUserPermission(Permission.Microphone);
+                return false;
+            }
+#endif
+            return true;
+        }
+
+        private bool CheckCameraPermission()
+        {
+#if UNITY_STANDALONE_WIN
+            if (!Application.HasUserAuthorization(UserAuthorization.WebCam))
+            {
+                Application.RequestUserAuthorization(UserAuthorization.WebCam);
+                return false;
+            }
+#endif
+#if PLATFORM_ANDROID
+            if (!Permission.HasUserAuthorizedPermission(Permission.Camera))
+            {
+                Permission.RequestUserPermission(Permission.Camera);
+                return false;
+            }
+#endif
+            return true;
+        }
+
         private bool? _enableCamera(RCRTCView view)
         {
             if (!CheckCameraPermission())
             {
-                ShowToast("没有摄像头权限");
+                ExampleUtils.ShowToast("没有摄像头权限");
                 return null;
             }
-
-            // 90
-            // Engine.SetCameraCaptureOrientation(RCRTCCameraCaptureOrientation.PORTRAIT_UPSIDE_DOWN);
-            // 0
-            // Engine.SetCameraCaptureOrientation(RCRTCCameraCaptureOrientation.LANDSCAPE_RIGHT);
-            // 360
-            // Engine.SetCameraCaptureOrientation(RCRTCCameraCaptureOrientation.LANDSCAPE_LEFT);
-            // 270
-            // Engine.SetCameraCaptureOrientation(RCRTCCameraCaptureOrientation.PORTRAIT);
 #if UNITY_STANDALONE_WIN
             if (CurrentCamera != null)
             {
@@ -2545,7 +3912,7 @@ namespace cn_rongcloud_rtc_unity_example
                 }
                 else
                 {
-                    ShowToast("没有可用的摄像头");
+                    ExampleUtils.ShowToast("没有可用的摄像头");
                 }
             }
 #else
@@ -2569,7 +3936,8 @@ namespace cn_rongcloud_rtc_unity_example
 #endif
             return null;
         }
-        private void AddUserItemToUserList(String id, GameObject list)
+
+        private void AddUserItemToUserList(String id, GameObject list, bool custom)
         {
             if (!Users.ContainsKey(id))
             {
@@ -2579,12 +3947,12 @@ namespace cn_rongcloud_rtc_unity_example
                 Button audio = item.transform.Find("SubsribeAudioSwitch").GetComponent<Button>();
                 audio.onClick.AddListener(() =>
                 {
-                    OnClickSubscribeAudioSwitch(id, audio);
+                    OnClickSubscribeAudioSwitch(id, audio, custom);
                 });
                 Button video = item.transform.Find("SubsribeVideoSwitch").GetComponent<Button>();
                 video.onClick.AddListener(() =>
                 {
-                    OnClickSubscribeVideoSwitch(id, video, item);
+                    OnClickSubscribeVideoSwitch(id, video, item, custom);
                 });
 
                 Toggle mirrorToggle = item.transform.Find("Panel/Mirror").GetComponent<Toggle>();
@@ -2622,137 +3990,112 @@ namespace cn_rongcloud_rtc_unity_example
             }
         }
 
-        private void OnClickSubscribeAudioSwitch(String id, Button audio)
+        private void RemoveUserItemFromUserList(String id, GameObject list)
         {
-            ShowLoading();
-            bool selected;
-            UserSubscribeAudioStates.TryGetValue(id, out selected);
-            if (!selected)
+            GameObject user;
+            if (Users.TryGetValue(id, out user))
             {
-                Engine.OnSubscribed = delegate (String remoteUserId, RCRTCMediaType type, int code, String message)
-                {
-                    Engine.OnSubscribed = null;
+                RectTransform position = user.GetComponent<RectTransform>();
 
-                    RunOnMainThread.Enqueue(() =>
-                    {
-                        HideLoading();
-                        if (code != 0)
-                        {
-                            ShowToast(message);
-                        }
-                        else
-                        {
-                            UserSubscribeAudioStates[remoteUserId] = true;
-                            audio.transform.Find("Text").GetComponent<Text>().text = "取消订阅音频";
-                        }
-                    });
-                };
-                int ret = Engine.Subscribe(id, RCRTCMediaType.AUDIO);
-                if (ret != 0)
-                {
-                    HideLoading();
-                    ShowToast("Error" + ret);
-                }
-            }
-            else
-            {
-                Engine.OnUnsubscribed = delegate (String remoteUserId, RCRTCMediaType type, int code, String message)
-                {
-                    Engine.OnUnsubscribed = null;
+                Destroy(user);
+                Users.Remove(id);
+                UserSubscribeAudioStates.Remove(id);
+                UserSubscribeVideoStates.Remove(id);
 
-                    RunOnMainThread.Enqueue(() =>
-                    {
-                        HideLoading();
-                        if (code != 0)
-                        {
-                            ShowToast(message);
-                        }
-                        else
-                        {
-                            UserSubscribeAudioStates[remoteUserId] = false;
-                            audio.transform.Find("Text").GetComponent<Text>().text = "订阅音频";
-                        }
-                    });
-                };
-                int ret = Engine.Unsubscribe(id, RCRTCMediaType.AUDIO);
-                if (ret != 0)
+                if (Users.Values.Count > 0)
                 {
-                    HideLoading();
-                    ShowToast("Error" + ret);
+                    int index = 0;
+                    for (int i = 0; i < list.transform.childCount; i++)
+                    {
+                        Transform child = list.transform.GetChild(i);
+                        if (child.gameObject.name != id)
+                        {
+                            child.gameObject.GetComponent<RectTransform>().localPosition = new Vector3(position.localPosition.x, (position.rect.height + 10) * index * -1, position.localPosition.z);
+                            index++;
+                        }
+                    }
+                    RectTransform rect = list.GetComponent<RectTransform>();
+                    rect.sizeDelta = new Vector2(rect.sizeDelta.x, Users.Values.Count * (position.rect.height + 10));
                 }
             }
         }
 
-        private void OnClickSubscribeVideoSwitch(String id, Button video, GameObject userItem)
+        private void ReloadHostUserList()
         {
-            ShowLoading();
-            bool selected;
-            UserSubscribeVideoStates.TryGetValue(id, out selected);
-            if (!selected)
+            foreach (var item in Users)
             {
-                bool isTiny = userItem.transform.Find("Panel/TinyStream").GetComponent<Toggle>().isOn;
-                bool isMirror = userItem.transform.Find("Panel/Mirror").GetComponent<Toggle>().isOn;
-                int option = userItem.transform.Find("Panel/DisplayOption").GetComponent<Dropdown>().value;
-                RCRTCViewFitType fitType = getViewFitType(option);
-                Engine.OnSubscribed = delegate (String remoteUserId, RCRTCMediaType type, int code, String message)
-                {
-                    Engine.OnSubscribed = null;
+                GameObject UserItem = item.Value;
+                Button video = UserItem.transform.Find("SubsribeVideoSwitch").GetComponent<Button>();
+                video.transform.Find("Text").GetComponent<Text>().text = "订阅视频";
+                Button audio = UserItem.transform.Find("SubsribeAudioSwitch").GetComponent<Button>();
+                audio.transform.Find("Text").GetComponent<Text>().text = "订阅音频";
+            }
+            UserSubscribeAudioStates.Clear();
+            UserSubscribeVideoStates.Clear();
+        }
 
-                    RunOnMainThread.Enqueue(() =>
-                    {
-                        HideLoading();
-                        if (code != 0)
-                        {
-                            ShowToast(message);
-                        }
-                        else
-                        {
-                            UserSubscribeVideoStates[remoteUserId] = true;
-                            video.transform.Find("Text").GetComponent<Text>().text = "取消订阅视频";
-                            var view = userItem.transform.Find("Panel").GetComponent<RCRTCView>();
-                            view.Mirror = isMirror;
-                            view.FitType = fitType;
-                            Engine.SetRemoteView(id, view);
-                        }
-                    });
-                };
-                
-                int ret = Engine.Subscribe(id, RCRTCMediaType.VIDEO, isTiny);
-                if (ret != 0)
-                {
-                    HideLoading();
-                    ShowToast("Error" + ret);
-                }
+        private void AddMessage(String message)
+        {
+            GameObject item = GameObject.Instantiate(MessagePrefab, MessageCanvasMessageList.transform) as GameObject;
+            item.GetComponent<Text>().text = message;
+            RectTransform rect = MessageCanvasMessageList.GetComponent<RectTransform>();
+            RectTransform current = item.GetComponent<RectTransform>();
+            if (Messages.Count > 0)
+            {
+                RectTransform last = MessageCanvasMessageList.transform.GetChild(Messages.Count - 1).gameObject.GetComponent<RectTransform>();
+                item.GetComponent<RectTransform>().localPosition = new Vector3(last.localPosition.x, last.localPosition.y - last.rect.height - 10, last.localPosition.z);
+                rect.sizeDelta = new Vector2(rect.sizeDelta.x, rect.rect.height + current.rect.height + 10);
             }
             else
             {
-                Engine.OnUnsubscribed = delegate (String remoteUserId, RCRTCMediaType type, int code, String message)
-                {
-                    Engine.OnUnsubscribed = null;
-
-                    RunOnMainThread.Enqueue(() =>
-                    {
-                        HideLoading();
-                        if (code != 0)
-                        {
-                            ShowToast(message);
-                        }
-                        else
-                        {
-                            UserSubscribeVideoStates[remoteUserId] = false;
-                            video.transform.Find("Text").GetComponent<Text>().text = "订阅视频";
-                            var view = userItem.transform.Find("Panel").GetComponent<RCRTCView>();
-                            Engine.RemoveRemoteView(id);
-                        }
-                    });
-                };
-                int ret = Engine.Unsubscribe(id, RCRTCMediaType.VIDEO);
-                if (ret != 0)
-                {
-                    HideLoading();
-                    ShowToast("Error" + ret);
-                }
+                rect.sizeDelta = new Vector2(rect.sizeDelta.x, current.rect.height);
             }
+            Messages.Add(item);
+        }
+
+        private void AddAudioEffect(int id)
+        {
+            if (!AudioEffects.ContainsKey(id))
+            {
+                GameObject item = GameObject.Instantiate(AudioEffectPrefab, AudioEffectCanvasEffectList.transform) as GameObject;
+                item.transform.Find("Title").GetComponent<Text>().text = AudioEffectNames[id];
+                Button play = item.transform.Find("Play").GetComponent<Button>();
+                play.onClick.AddListener(() =>
+                {
+                    OnClickAudioEffectPlay(item, id);
+                });
+                Button stop = item.transform.Find("Stop").GetComponent<Button>();
+                stop.onClick.AddListener(() =>
+                {
+                    OnClickAudioEffectStop(id);
+                });
+                if (AudioEffects.Values.Count > 0)
+                {
+                    RectTransform last = AudioEffectCanvasEffectList.transform.GetChild(AudioEffects.Values.Count - 1).gameObject.GetComponent<RectTransform>();
+                    item.GetComponent<RectTransform>().localPosition = new Vector3(last.localPosition.x, last.localPosition.y - last.rect.height - 10, last.localPosition.z);
+                    RectTransform rect = AudioEffectCanvasEffectList.GetComponent<RectTransform>();
+                    rect.sizeDelta = new Vector2(rect.sizeDelta.x, (AudioEffects.Values.Count + 1) * (last.rect.height + 10));
+                }
+                AudioEffects.Add(id, item);
+            }
+        }
+
+        private RCRTCViewFitType getViewFitType(int value)
+        {
+            if (value == 0)
+            {
+                return RCRTCViewFitType.CENTER;
+            }
+            else if (value == 1)
+            {
+                return RCRTCViewFitType.COVER;
+            }
+            else if (value == 2)
+            {
+                return RCRTCViewFitType.FILL;
+            }
+
+            return RCRTCViewFitType.CENTER;
         }
 
         private void ChangeRemoteUserPublishState(GameObject list, String id, RCRTCMediaType type, bool published)
@@ -2805,7 +4148,7 @@ namespace cn_rongcloud_rtc_unity_example
             {
                 return;
             }
-       
+
             Text videoBitrate = user.Find("VideoBitrate").GetComponent<Text>();
             Text videoFps = user.Find("VideoFps").GetComponent<Text>();
             Text videoPackageLostRate = user.Find("VideoPackageLostRate").GetComponent<Text>();
@@ -2817,418 +4160,31 @@ namespace cn_rongcloud_rtc_unity_example
             videoPackageLostRate.text = "视频丢包率：" + stats.PackageLostRate + "%";
         }
 
-        private void RemoveUserItemFromUserList(String id, GameObject list)
+        private int GetResolutionWidth(RCRTCVideoResolution resolution)
         {
-            GameObject user;
-            if (Users.TryGetValue(id, out user))
+            var array = resolution.ToString().Split('_');
+            if (array.Length == 3)
             {
-                RectTransform position = user.GetComponent<RectTransform>();
-
-                Destroy(user);
-                // DestroyImmediate(user);
-                Users.Remove(id);
-                UserSubscribeAudioStates.Remove(id);
-                UserSubscribeVideoStates.Remove(id);
-
-                if (Users.Values.Count > 0)
-                {
-                    int index = 0;
-                    for (int i = 0; i < list.transform.childCount; i++)
-                    {
-                        Transform child = list.transform.GetChild(i);
-                        if (child.gameObject.name != id)
-                        {
-                            child.gameObject.GetComponent<RectTransform>().localPosition = new Vector3(position.localPosition.x, (position.rect.height + 10) * index * -1, position.localPosition.z);
-                            index++;
-                        }
-                    }
-                    RectTransform rect = list.GetComponent<RectTransform>();
-                    rect.sizeDelta = new Vector2(rect.sizeDelta.x, Users.Values.Count * (position.rect.height + 10));
-                }
+                return Int32.Parse(array[1]);
             }
+
+            return 0;
         }
 
-        private void AddMessage(String message)
+        private int GetResolutionHeight(RCRTCVideoResolution resolution)
         {
-            GameObject item = GameObject.Instantiate(MessagePrefab, MessageCanvasMessageList.transform) as GameObject;
-            item.GetComponent<Text>().text = message;
-            RectTransform rect = MessageCanvasMessageList.GetComponent<RectTransform>();
-            RectTransform current = item.GetComponent<RectTransform>();
-            if (Messages.Count > 0)
+            var array = resolution.ToString().Split('_');
+            if (array.Length == 3)
             {
-                RectTransform last = MessageCanvasMessageList.transform.GetChild(Messages.Count - 1).gameObject.GetComponent<RectTransform>();
-                item.GetComponent<RectTransform>().localPosition = new Vector3(last.localPosition.x, last.localPosition.y - last.rect.height - 10, last.localPosition.z);
-                rect.sizeDelta = new Vector2(rect.sizeDelta.x, rect.rect.height + current.rect.height + 10);
+                return Int32.Parse(array[2]);
             }
-            else
-            {
-                rect.sizeDelta = new Vector2(rect.sizeDelta.x, current.rect.height);
-            }
-            Messages.Add(item);
+
+            return 0;
         }
 
-        private void ShowCDNDialog()
-        {
-#if UNITY_STANDALONE_WIN
-            ShowToast("Windows 暂不支持此功能");
-            return;
-#endif
-            if (CDNs.Values.Count > 0)
-            {
-                ConfigCDNCanvasDialog.SetActive(true);
-            }
-            else
-            {
-                LoadCDNs();
-            }
-        }
+        #endregion
 
-        private void LoadCDNs()
-        {
-            ShowLoading();
-            String url = ExampleConfig.Host + "/cdns";
-            Get(url, (bool error, String result) =>
-            {
-                if (!error)
-                {
-                    Dictionary<String, String> cdns = JsonConvert.DeserializeObject<Dictionary<String, String>>(result);
-                    foreach (String key in cdns.Keys)
-                    {
-                        String value;
-                        if (cdns.TryGetValue(key, out value))
-                        {
-                            CDN cdn = new CDN(key, value);
-                            AddCDN(cdn);
-                        }
-                    }
-                    ConfigCDNCanvasDialog.SetActive(true);
-                }
-                else
-                {
-                    ShowToast("Load CDN List Error: " + result);
-                }
-                HideLoading();
-            });
-        }
-
-        private void AddCDN(CDN cdn)
-        {
-            GameObject item = GameObject.Instantiate(CDNSelectorPrefab, ConfigCDNCanvasDialogCDNList.transform) as GameObject;
-            item.GetComponent<Button>().onClick.AddListener(() =>
-            {
-                LoadCND(cdn.id);
-            });
-            item.transform.Find("Text").GetComponent<Text>().text = cdn.name;
-            RectTransform rect = ConfigCDNCanvasDialogCDNList.GetComponent<RectTransform>();
-            RectTransform current = item.GetComponent<RectTransform>();
-            if (CDNs.Values.Count > 0)
-            {
-                RectTransform last = ConfigCDNCanvasDialogCDNList.transform.GetChild(CDNs.Values.Count - 1).gameObject.GetComponent<RectTransform>();
-                item.GetComponent<RectTransform>().localPosition = new Vector3(last.localPosition.x, last.localPosition.y - last.rect.height - 10, last.localPosition.z);
-                rect.sizeDelta = new Vector2(rect.sizeDelta.x, rect.rect.height + current.rect.height + 10);
-            }
-            else
-            {
-                rect.sizeDelta = new Vector2(rect.sizeDelta.x, current.rect.height);
-            }
-            CDNs.Add(cdn, item);
-        }
-
-        private void LoadCND(String id)
-        {
-            String sessionId = Engine.GetSessionId();
-            if (String.IsNullOrEmpty(sessionId))
-            {
-                ShowToast("Get Session Id Null, Please try later.");
-                return;
-            }
-            ShowLoading();
-            String url = ExampleConfig.Host + "/cdn/" + id + "/sealLive/" + sessionId;
-            Get(url, (bool error, String result) =>
-            {
-                if (!error)
-                {
-                    Debug.Log("CDN = " + result);
-
-                    CDNInfo cdn = JsonUtility.FromJson<CDNInfo>(result);
-
-                    Engine.OnLiveCdnAdded = delegate (String liveUrl, int code, String message)
-                    {
-                        Engine.OnLiveCdnAdded = null;
-
-                        RunOnMainThread.Enqueue(() =>
-                        {
-                            HideLoading();
-                            if (code != 0)
-                            {
-                                ShowToast("Add Live Cdn Error: " + message);
-                            }
-                            else
-                            {
-                                AddCDN(cdn);
-                                ConfigCDNCanvasDialog.SetActive(false);
-                            };
-                        });
-                    };
-                    int ret = Engine.AddLiveCdn(cdn.push);
-                    if (ret != 0)
-                    {
-                        HideLoading();
-                        ShowToast("Add Live Cdn Error " + ret);
-                    }
-                }
-                else
-                {
-                    HideLoading();
-                    ShowToast("Load CDN Url Error: " + result);
-                }
-            });
-        }
-
-        private void AddCDN(CDNInfo cdn)
-        {
-            GameObject item = GameObject.Instantiate(CDNItemPrefab, ConfigCDNCanvasCDNList.transform) as GameObject;
-            item.name = cdn.push;
-            item.transform.Find("Delete").GetComponent<Button>().onClick.AddListener(() =>
-            {
-                RemoveCDN(item);
-            });
-            item.transform.Find("Info").GetComponent<Text>().text = "RTMP: " + cdn.rtmp + "\nHSL: " + cdn.hls + "\nFLV: " + cdn.flv;
-            RectTransform rect = ConfigCDNCanvasCDNList.GetComponent<RectTransform>();
-            RectTransform current = item.GetComponent<RectTransform>();
-            LayoutRebuilder.ForceRebuildLayoutImmediate(current);
-            float height = LayoutUtility.GetPreferredSize(current, 1);
-            if (SelectedCDNs.Count > 0)
-            {
-                RectTransform last = ConfigCDNCanvasCDNList.transform.GetChild(SelectedCDNs.Count - 1).gameObject.GetComponent<RectTransform>();
-                item.GetComponent<RectTransform>().localPosition = new Vector3(last.localPosition.x, last.localPosition.y - last.rect.height - 10, last.localPosition.z);
-                rect.sizeDelta = new Vector2(rect.sizeDelta.x, rect.rect.height + height + 10);
-            }
-            else
-            {
-                rect.sizeDelta = new Vector2(rect.sizeDelta.x, height);
-            }
-            SelectedCDNs.Add(item);
-        }
-
-        private void RemoveCDN(GameObject cdn)
-        {
-            ShowLoading();
-            Engine.OnLiveCdnRemoved = delegate (String url, int code, String message)
-            {
-                Engine.OnLiveCdnRemoved = null;
-
-                RunOnMainThread.Enqueue(() =>
-                {
-                    HideLoading();
-                    if (code != 0)
-                    {
-                        ShowToast("Remove Live Cdn Error: " + message);
-                    }
-                    else
-                    {
-                        SelectedCDNs.Remove(cdn);
-                        Destroy(cdn);
-                        // DestroyImmediate(cdn);
-
-                        float height = 0;
-                        foreach (GameObject child in SelectedCDNs)
-                        {
-                            RectTransform transform = child.GetComponent<RectTransform>();
-                            transform.localPosition = new Vector3(transform.localPosition.x, -height, transform.localPosition.z);
-                            height += transform.rect.height + 10;
-                        }
-                        if (height > 0)
-                        {
-                            RectTransform rect = ConfigCDNCanvasCDNList.GetComponent<RectTransform>();
-                            rect.sizeDelta = new Vector2(rect.sizeDelta.x, height);
-                        }
-                    }
-                });
-            };
-            int ret = Engine.RemoveLiveCdn(cdn.name);
-            if (ret != 0)
-            {
-                HideLoading();
-                ShowToast("Remove Live Cdn Error " + ret);
-            }
-        }
-
-        private void AddAudioEffect(int id)
-        {
-            if (!AudioEffects.ContainsKey(id))
-            {
-                GameObject item = GameObject.Instantiate(AudioEffectPrefab, AudioEffectCanvasEffectList.transform) as GameObject;
-                item.transform.Find("Title").GetComponent<Text>().text = AudioEffectNames[id];
-                Button play = item.transform.Find("Play").GetComponent<Button>();
-                play.onClick.AddListener(() =>
-                {
-                    OnClickAudioEffectPlay(item, id);
-                });
-                Button stop = item.transform.Find("Stop").GetComponent<Button>();
-                stop.onClick.AddListener(() =>
-                {
-                    OnClickAudioEffectStop(id);
-                });
-                if (AudioEffects.Values.Count > 0)
-                {
-                    RectTransform last = AudioEffectCanvasEffectList.transform.GetChild(AudioEffects.Values.Count - 1).gameObject.GetComponent<RectTransform>();
-                    item.GetComponent<RectTransform>().localPosition = new Vector3(last.localPosition.x, last.localPosition.y - last.rect.height - 10, last.localPosition.z);
-                    RectTransform rect = AudioEffectCanvasEffectList.GetComponent<RectTransform>();
-                    rect.sizeDelta = new Vector2(rect.sizeDelta.x, (AudioEffects.Values.Count + 1) * (last.rect.height + 10));
-                }
-                AudioEffects.Add(id, item);
-            }
-        }
-
-        private void OnClickAudioEffectPlay(GameObject item, int id)
-        {
-            int volume = (int)item.transform.Find("Volume").GetComponent<Slider>().value;
-            int count = (int)item.transform.Find("Count").GetComponent<Slider>().value;
-            int ret = Engine.PlayAudioEffect(id, volume, count);
-            if (ret != 0)
-            {
-                ShowToast("Play Audio Effect " + id + " Error " + ret);
-            }
-        }
-
-        private void OnClickAudioEffectStop(int id)
-        {
-            int ret = Engine.StopAudioEffect(id);
-            if (ret != 0)
-            {
-                ShowToast("Stop Audio Effect " + id + " Error " + ret);
-            }
-        }
-
-        public void ShowLoading()
-        {
-            LoadingCount++;
-            if (!LoadingCanvas.activeInHierarchy)
-            {
-                LoadingCanvas.SetActive(true);
-            }
-        }
-
-        public void HideLoading()
-        {
-            LoadingCount--;
-            if (LoadingCount <= 0 && LoadingCanvas.activeInHierarchy)
-            {
-                LoadingCount = 0;
-                LoadingCanvas.SetActive(false);
-            }
-        }
-
-        public void ShowToast(String toast)
-        {
-            ShowToast(toast, 2);
-        }
-
-        public void ShowToast(String toast, int duration)
-        {
-            if (CurrentToast != null)
-            {
-                StopCoroutine(CurrentToast);
-            }
-            CurrentToast = MakeToast(toast, duration);
-            StartCoroutine(CurrentToast);
-        }
-
-        private IEnumerator MakeToast(String toast, int duration)
-        {
-            ToastInfo.text = toast;
-            yield return fadeInAndOut(true, 0.5f);
-
-            float counter = 0;
-            while (counter < duration)
-            {
-                counter += Time.deltaTime;
-                yield return null;
-            }
-
-            yield return fadeInAndOut(false, 0.5f);
-        }
-
-        private IEnumerator fadeInAndOut(bool fadeIn, float duration)
-        {
-            float from, to;
-            if (fadeIn)
-            {
-                from = 0f;
-                to = 1f;
-            }
-            else
-            {
-                from = 1f;
-                to = 0f;
-            }
-
-            float counter = 0f;
-            while (counter < duration)
-            {
-                counter += Time.deltaTime;
-                float alpha = Mathf.Lerp(from, to, counter / duration);
-                Toast.alpha = alpha;
-                yield return null;
-            }
-        }
-        private void GenerateTokenAndLogin(bool doLogin)
-        {
-            ShowLoading();
-            TimeSpan time = DateTime.Now.ToUniversalTime() - new DateTime(1970, 1, 1, 0, 0, 0, 0);
-            String current = Convert.ToInt64(time.TotalMilliseconds).ToString();
-            String id = ExampleConfig.Prefix + current;
-            String url = ExampleConfig.Host + "/token/" + id;
-            String json = "{\"key\":\"" + ExampleConfig.AppKey + "\"}";
-            Post(url, json, (bool error, String result) =>
-            {
-                if (!error)
-                {
-                    Debug.Log("result:"+ result);
-                    User = JsonUtility.FromJson<LoginData>(result);
-                    User.Name = ExampleConfig.Prefix + current;
-                    ConnectCanvasTokenInput.text = User.Token;
-                    if (doLogin)
-                    {
-                        ConnectIM(User.Token); 
-                    }
-                    else
-                    {
-                        HideLoading();
-                    }
-                }
-                else
-                {
-                    HideLoading();
-                    ShowToast(result);
-                }
-            });
-        }
-
-        private void ConnectIM(string token)
-        {
-            RCIMClient.Instance.Connect(token, (code, userId) =>
-            {
-                if (code == RCErrorCode.Succeed)
-                {
-                    RunOnMainThread.Enqueue(() =>
-                    {
-                        HideLoading();
-                        ChangeToConnected();
-                    });
-                }
-                else
-                {
-                    RunOnMainThread.Enqueue(() =>
-                    {
-                        HideLoading();
-                        ShowToast("IM Connect Error, Code = " + code);
-                    });
-                }
-            });
-        }
-
+        #region Net
         private void Post(String url, String json, Action<bool, String> callback)
         {
             StartCoroutine(_Post(url, json, callback));
@@ -3283,195 +4239,248 @@ namespace cn_rongcloud_rtc_unity_example
                 callback?.Invoke(result.Length == 0, result);
             }
         }
+        #endregion
 
-#region IM Callbacks
-
-        private void OnIMReceivedMessage(RCMessage msg, int left)
+        #region IM Callbacks
+        private void OnIMReceivedMessage(RCIMMessage message, int left, bool offline, bool hasPackage)
         {
             RunOnMainThread.Enqueue(() =>
             {
-                AddMessage(String.Format("{0}: {1}", msg.ObjectName, msg));
+                AddMessage(String.Format("{0}: {1}", message.messageType, message.ToString()));
             });
         }
 
-#endregion
-
-#region RTC Callbacks
-
-        private void MeetingOnUserJoined(String id)
+        private void OnSendMessageSent(int code, RCIMMessage message)
         {
             RunOnMainThread.Enqueue(() =>
             {
-                AddUserItemToUserList(id, MeetingCanvasUserList);
+                if (code == 0)
+                {
+                    AddMessage(String.Format("{0} (我): {1}", message.messageType, message.ToString()));
+                }
+                else
+                {
+                    ExampleUtils.ShowToast("消息发送失败！");
+                }
+
             });
         }
+        #endregion
 
-        private void MeetingOnUserOffline(String id)
+        #region RTC Callbacks
+
+        private void MeetingOnUserJoined(String roomId, String userId)
         {
             RunOnMainThread.Enqueue(() =>
             {
-                RemoveUserItemFromUserList(id, MeetingCanvasUserList);
+                AddUserItemToUserList(userId, MeetingCanvasUserList, false);
             });
         }
 
-        private void MeetingOnUserLeft(String id)
+        private void MeetingOnUserOffline(String roomId, String userId)
         {
             RunOnMainThread.Enqueue(() =>
             {
-                RemoveUserItemFromUserList(id, MeetingCanvasUserList);
+                RemoveUserItemFromUserList(userId, MeetingCanvasUserList);
             });
         }
 
-        private void MeetingOnRemotePublished(String id, RCRTCMediaType type)
+        private void MeetingOnUserLeft(String roomId, String userId)
         {
             RunOnMainThread.Enqueue(() =>
             {
-                ChangeRemoteUserPublishState(MeetingCanvasUserList, id, type, true);
+                RemoveUserItemFromUserList(userId, MeetingCanvasUserList);
             });
         }
 
-        private void MeetingOnRemoteUnpublished(String id, RCRTCMediaType type)
+        private void MeetingOnRemotePublished(String roomId, String userId, RCRTCMediaType type)
         {
             RunOnMainThread.Enqueue(() =>
             {
-                ChangeRemoteUserPublishState(MeetingCanvasUserList, id, type, false);
+                ChangeRemoteUserPublishState(MeetingCanvasUserList, userId, type, true);
             });
         }
 
-        private void HostOnUserJoined(String id)
+        private void MeetingOnRemoteUnpublished(String roomId, String userId, RCRTCMediaType type)
         {
             RunOnMainThread.Enqueue(() =>
             {
-                AddUserItemToUserList(id, HostCanvasUserList);
+                ChangeRemoteUserPublishState(MeetingCanvasUserList, userId, type, false);
             });
         }
 
-        private void HostOnUserOffline(String id)
+        private void OnUserJoined(String roomId, String userId)
         {
             RunOnMainThread.Enqueue(() =>
             {
-                RemoveUserItemFromUserList(id, HostCanvasUserList);
+                AddUserItemToUserList(userId, HostCanvasUserList, false);
+                if (roomId != RoomId)
+                {
+                    //更新跨房间的用户信息
+                    if (!JoinedSubRooms.Contains(roomId))
+                    {
+                        JoinedSubRooms.Add(roomId);
+                        ReloadSubRoomList();
+                    }
+                }
             });
         }
 
-        private void HostOnUserLeft(String id)
+        private void OnUserOffline(String roomId, String userId)
         {
             RunOnMainThread.Enqueue(() =>
             {
-                RemoveUserItemFromUserList(id, HostCanvasUserList);
+                RemoveUserItemFromUserList(userId, HostCanvasUserList);
             });
         }
 
-        private void HostOnRemotePublished(String id, RCRTCMediaType type)
+        private void OnUserLeft(String roomId, String userId)
         {
             RunOnMainThread.Enqueue(() =>
             {
-                ChangeRemoteUserPublishState(HostCanvasUserList, id, type, true);
+                RemoveUserItemFromUserList(userId, HostCanvasUserList);
             });
         }
 
-        private void HostOnRemoteUnpublished(String id, RCRTCMediaType type)
+        private void OnRemotePublished(String roomId, String userId, RCRTCMediaType type)
         {
             RunOnMainThread.Enqueue(() =>
             {
-                ChangeRemoteUserPublishState(HostCanvasUserList, id, type, false);
+                ChangeRemoteUserPublishState(HostCanvasUserList, userId, type, true);
             });
         }
 
-        private void AudienceOnUserJoined(String id)
+        private void OnRemoteUnpublished(String roomId, String userId, RCRTCMediaType type)
         {
-            Debug.Log($"AudienceOnUserJoined {id}");
+            RunOnMainThread.Enqueue(() =>
+            {
+                ChangeRemoteUserPublishState(HostCanvasUserList, userId, type, false);
+            });
         }
 
-        private void AudienceOnUserOffline(String id)
-        {
-            Debug.Log($"AudienceOnUserOffline {id}");
-        }
-
-        private void AudienceOnUserLeft(String id)
-        {
-            Debug.Log($"AudienceOnUserLeft {id}");
-        }
-
-        private string toString(RCRTCMediaType type)
-        {
-            if (type == RCRTCMediaType.AUDIO) return "AUDIO";
-            if (type == RCRTCMediaType.VIDEO) return "VIDEO";
-            if (type == RCRTCMediaType.AUDIO_VIDEO) return "AUDIO_VIDEO";
-            return string.Empty;
-        }
-        
         private void AudienceOnRemoteLiveMixPublished(RCRTCMediaType type)
         {
             RunOnMainThread.Enqueue(() =>
             {
-                // AudienceLiveStreamText.text = toString(type);
                 AudienceSubscribeButton.interactable = true;
             });
-            
         }
-        
+
         private void AudienceOnRemoteLiveMixUnpublished(RCRTCMediaType type)
         {
-           RunOnMainThread.Enqueue(() =>
-           {
-               AudienceLiveStreamText.text = string.Empty;
-               AudienceSubscribeButton.transform.Find("Text").GetComponent<Text>().text = "订阅";
-               AudienceSubscribeButton.interactable = false;
-           }); 
-        }
-#endregion
-
-#region Private Methods
-
-        private int GetResolutionWidth(RCRTCVideoResolution resolution)
-        {
-            var array = resolution.ToString().Split('_');
-            if (array.Length == 3)
+            RunOnMainThread.Enqueue(() =>
             {
-                return Int32.Parse(array[1]);
-            }
-
-            return 0;
+                AudienceSubscribeButton.transform.Find("Text").GetComponent<Text>().text = "订阅";
+                AudienceSubscribeButton.interactable = false;
+            });
         }
 
-        private int GetResolutionHeight(RCRTCVideoResolution resolution)
+        private void OnJoinSubRoomRequestReceived(string roomId, string userId, string extra)
         {
-            var array = resolution.ToString().Split('_');
-            if (array.Length == 3)
+            var agree = new ExampleUtils.AlertAction()
             {
-                return Int32.Parse(array[2]);
+                title = "同意",
+                action = () => {
+                    ResponseRequest(roomId, userId, true);
+                },
+            };
+            var degree = new ExampleUtils.AlertAction()
+            {
+                title = "拒绝",
+                action = () => {
+                    ResponseRequest(roomId, userId, false);
+                },
+            };
+            ExampleUtils.ShowAlert("收到连麦请求", $"来自房间{roomId}的{userId}邀请你一起连麦，是否同意?", new[] { agree, degree });
+        }
+
+        private void OnJoinSubRoomRequestResponseReceived(string roomId, string userId, bool agree,
+                                                                      string extra)
+        {
+            if (agree)
+            {
+                ExampleUtils.ShowToast($"{roomId}的{userId}同意了你的加入申请,正在加入...");
+                JoinSubRoom(roomId);
             }
-
-            return 0;
+            else
+            {
+                ExampleUtils.ShowToast($"{roomId}的{userId}拒绝了你的加入申请");
+            }
         }
 
-#endregion
-
-        public void OnClickEnablePush()
+        private void OnSubRoomBanded(string roomId)
         {
-#if UNITY_ANDROID
-            mPushEnabled = PushEnabled.isOn;
-#endif
+            Debug.Log($"OnSubRoomBanded {roomId}");
+            if (!BandedSubRooms.Contains(roomId))
+            {
+                BandedSubRooms.Add(roomId);
+                ReloadSubRoomList();
+            }
         }
 
-        public void OnClickEnableIpc()
+        private void OnSubRoomDisband(string roomId, string userId)
         {
-#if UNITY_ANDROID
-            mDisableIPC = IpcDisEnabled.isOn;
-#endif
+            Debug.Log($"OnSubRoomDisband {roomId}");
+            if (BandedSubRooms.Contains(roomId))
+            {
+                BandedSubRooms.Remove(roomId);
+                ReloadSubRoomList();
+            }
         }
 
-        public void OnClickInit()
+        private void OnRemoteCustomStreamPublished(string roomId, string userId, string tag,
+                                                               RCRTCMediaType type)
         {
-#if UNITY_ANDROID
-            RCIMClient.Instance.EnablePush(mPushEnabled);
-            RCIMClient.Instance.DisableIPC(mDisableIPC);
-            RCIMClient.Instance.Init(ExampleConfig.AppKey);
-            GameObject.Find("/Connect/Init/Text").GetComponent<Text>().text = "已初始化";
-            InitButton.enabled = false;
-#endif
+            AddUserItemToUserList($"{userId}#{tag}", HostCanvasUserList, true);
+            RunOnMainThread.Enqueue(() =>
+            {
+                ChangeRemoteUserPublishState(HostCanvasUserList, $"{userId}#{tag}", type, true);
+            });
         }
+
+        private void OnRemoteCustomStreamUnpublished(string roomId, string userId, string tag,
+                                                               RCRTCMediaType type)
+        {
+            RemoveUserItemFromUserList($"{userId}#{tag}", HostCanvasUserList);
+        }
+
+        private void OnSeiReceived(string roomId, string userId, string sei)
+        {
+            GameObject obj = GameObject.Find("SEI/SEI");
+            if (obj != null)
+            {
+                obj.GetComponent<Text>().text = $"roomId:{roomId}, userId:{userId}, sei:{sei}";
+            }
+        }
+
+        private void OnLiveMixSeiReceived(string sei)
+        {
+            GameObject obj = GameObject.Find("Audience/SEI");
+            if (obj != null)
+            {
+                obj.GetComponent<Text>().text = $"SEI:{sei.Replace("\n", "").Replace("\t", "").Replace("\r", "").Replace(" ", "")}";
+            }
+        }
+
+        private void OnRemoteLiveRoleSwitched(string roomId, string userId, RCRTCRole role)
+        {
+            if (roomId == RoomId)
+            {
+                if (HostCanvas.activeSelf)
+                {
+                    if (role == RCRTCRole.LIVE_AUDIENCE)
+                    {
+                        OnUserLeft(roomId, userId);
+                    }
+                    else if (role == RCRTCRole.LIVE_BROADCASTER)
+                    {
+                        OnUserJoined(roomId, userId);
+                    }
+                }
+            }
+        }
+        #endregion
+
         public GameObject NetworkStatsPrefab;
         public GameObject AudioStatsPrefab;
         public GameObject VideoStats;
@@ -3481,6 +4490,8 @@ namespace cn_rongcloud_rtc_unity_example
         public GameObject CDNItemPrefab;
         public GameObject AudioEffectPrefab;
         public GameObject DeviceItemPrefab;
+        public GameObject JoinedSubRoomPrefab;
+        public GameObject SubRoomPrefab;
 
         private static readonly ConcurrentQueue<Action> RunOnMainThread = new ConcurrentQueue<Action>();
 
@@ -3501,9 +4512,6 @@ namespace cn_rongcloud_rtc_unity_example
         private Text MeetingCanvasEnableMicrophoneSwitchInfo;
         private Text MeetingCanvasEnableCameraSwitchInfo;
         private Text MeetingCanvasPublishAudioSwitchInfo;
-        private AudioSource MeetingAudioSource;
-        private GameObject MeetingCanvasPlayBackgroundMusicSwitchButton;
-        private Text MeetingCanvasPlayBackgroundMusicSwitchInfo;
         private Text MeetingCanvasSwitchAudioOutputInfo;
         private GameObject MeetingCanvasStatsTable;
         private GameObject MeetingCanvasUserList;
@@ -3519,11 +4527,10 @@ namespace cn_rongcloud_rtc_unity_example
         private Text HostCanvasPublishAudioSwitchInfo;
         private Text HostCanvasSwitchAudioOutputInfo;
         private Text HostPublishVideoText;
-        private Button HostCanvasConfigCDN;
         private GameObject HostCanvasStatsTable;
         private GameObject HostCanvasUserList;
         private VideoConfigPrefab HostVideoConfigPanel;
-        
+
         private GameObject AudienceCanvas;
         private Text AudienceCanvasTitle;
         private VideoPanelPrefab AudienceVideoPanel;
@@ -3536,9 +4543,8 @@ namespace cn_rongcloud_rtc_unity_example
         private Toggle AudienceTinyStream;
         private RCRTCMediaType AudienceUISelectedMediaType;
         private RCRTCMediaType? AudienceSubscribeType;
-        private Text AudienceLiveStreamText;
         private bool AudienceIsSubscribed;
-        
+
         private GameObject MessageCanvas;
         private Text MessageCanvasActionInfo;
         private GameObject MessageCanvasMessageList;
@@ -3559,10 +4565,8 @@ namespace cn_rongcloud_rtc_unity_example
         private Toggle AudioMixCanvasPlayback;
         private Slider AudioMixCanvasPlaybackVolume;
 
-        private GameObject LoadingCanvas;
-        private int LoadingCount;
-
         private GameObject HostMixConfig;
+        private GameObject HostMixBgConfig;
         private GameObject HostMixVideoStreamConfig;
         private GameObject HostMixTinyVideoStreamConfig;
         private GameObject HostMixVideoCustomLayoutConfig;
@@ -3573,9 +4577,9 @@ namespace cn_rongcloud_rtc_unity_example
         private GameObject DeviceListCanvas;
         private GameObject DeviceList;
 
-        private CanvasGroup Toast;
-        private Text ToastInfo;
-        private IEnumerator CurrentToast;
+        private GameObject SubRoomCanvas;
+
+        private GameObject SeiCanvas;
 
         private String RoomId;
 
@@ -3583,9 +4587,8 @@ namespace cn_rongcloud_rtc_unity_example
         private LoginData User;
         private bool Connected;
 
+        private RCIMEngine imEngine = null;
         private RCRTCEngine Engine = null;
-
-        private bool PlayBackgroundMusic;
 
         private bool Speaker;
         private bool Microphone;
@@ -3594,6 +4597,7 @@ namespace cn_rongcloud_rtc_unity_example
         private bool PublishVideo;
         private bool InChatRoom;
         private bool CloseMessagePanel;
+        private bool PublishCustomStream;
         private RCRTCAudioMixingMode AudioMixingMode = RCRTCAudioMixingMode.MIX;
 
         private Dictionary<String, GameObject> Users;
@@ -3604,6 +4608,10 @@ namespace cn_rongcloud_rtc_unity_example
         private Dictionary<CDN, GameObject> CDNs;
         private List<GameObject> SelectedCDNs;
         private Dictionary<int, GameObject> AudioEffects;
+        private List<Config> SavedInfos;
+        private List<String> JoinedSubRooms = new List<string>();
+        private List<String> JoinableSubRooms = new List<string>();
+        private List<String> BandedSubRooms = new List<string>();
 
         private static readonly String[] AudioEffectNames = {
             "反派大笑",
@@ -3616,7 +4624,6 @@ namespace cn_rongcloud_rtc_unity_example
 
         private Toggle PushEnabled;
         private Toggle IpcDisEnabled;
-        private Button InitButton;
 #if UNITY_ANDROID
         private bool mPushEnabled = false;
         private bool mDisableIPC = true;
@@ -3661,7 +4668,7 @@ namespace cn_rongcloud_rtc_unity_example
                     action(model, changed);
                     if (single)
                     {
-                        OnClickDeviceListClose();
+                        DeviceListCanvas.SetActive(false);
                     }
                 });
                 if (last != null)
@@ -3700,185 +4707,5 @@ namespace cn_rongcloud_rtc_unity_example
         }
 #endif
     }
-
-    public class LoginData
-    {
-        public String Name;
-
-        [SerializeField]
-        private String userId;
-        public String Id { get { return userId; } private set { Id = value; } }
-
-        [SerializeField]
-        private String token;
-        public String Token { get { return token; } private set { Token = value; } }
-    }
-
-    public class Message
-    {
-        public Message(String name, String content)
-        {
-            this.name = name;
-            this.content = content;
-        }
-
-        public String name;
-        public String content;
-    }
-
-    public class CDN
-    {
-        public CDN(String id, String name)
-        {
-            this.id = id;
-            this.name = name;
-        }
-        public String id;
-        public String name;
-    }
-
-    public class CDNInfo
-    {
-        public String push;
-        public String rtmp;
-        public String hls;
-        public String flv;
-    }
-
-    public class StatsListenerProxy : RCRTCStatsListener
-    {
-        public StatsListenerProxy(OnNetworkStatsDelegate ons, OnLocalAudioStatsDelegate olas, OnLocalVideoStatsDelegate olvs, OnRemoteAudioStatsDelegate oras, OnRemoteVideoStatsDelegate orvs)
-        {
-            ONSDelegate = ons;
-            OLASDelegate = olas;
-            OLVSDelegate = olvs;
-            ORASDelegate = oras;
-            ORVSDelegate = orvs;
-        }
-
-        public void OnNetworkStats(RCRTCNetworkStats stats)
-        {
-            ONSDelegate.Invoke(stats);
-        }
-
-        public void OnLocalAudioStats(RCRTCLocalAudioStats stats)
-        {
-            OLASDelegate.Invoke(stats);
-        }
-
-        public void OnLocalVideoStats(RCRTCLocalVideoStats stats)
-        {
-            OLVSDelegate.Invoke(stats);
-        }
-
-        public void OnRemoteAudioStats(String userId, RCRTCRemoteAudioStats stats)
-        {
-            ORASDelegate.Invoke(userId, stats);
-        }
-
-        public void OnRemoteVideoStats(String userId, RCRTCRemoteVideoStats stats)
-        {
-            ORVSDelegate.Invoke(userId, stats);
-        }
-
-        public void OnLiveMixAudioStats(RCRTCRemoteAudioStats stats)
-        {
-        }
-
-        public void OnLiveMixVideoStats(RCRTCRemoteVideoStats stats)
-        {
-        }
-
-        public void OnLocalCustomAudioStats(String tag, RCRTCLocalAudioStats stats)
-        {
-        }
-
-        public void OnLocalCustomVideoStats(String tag, RCRTCLocalVideoStats stats)
-        {
-        }
-
-        public void OnRemoteCustomAudioStats(String userId, String tag, RCRTCRemoteAudioStats stats)
-        {
-        }
-
-        public void OnRemoteCustomVideoStats(String userId, String tag, RCRTCRemoteVideoStats stats)
-        {
-        }
-
-        private readonly OnNetworkStatsDelegate ONSDelegate;
-        private readonly OnLocalAudioStatsDelegate OLASDelegate;
-        private readonly OnLocalVideoStatsDelegate OLVSDelegate;
-        private readonly OnRemoteAudioStatsDelegate ORASDelegate;
-        private readonly OnRemoteVideoStatsDelegate ORVSDelegate;
-    }
-
-    public class LiveStatsListenerProxy : RCRTCStatsListener
-    {
-        public LiveStatsListenerProxy(OnNetworkStatsDelegate ons, OnLiveMixAudioStatsDelegate oras, OnLiveMixVideoStatsDelegate orvs)
-        {
-            ONSDelegate = ons;
-            OLMASDelegate = oras;
-            OLMVSDelegate = orvs;
-        }
-
-        public void OnNetworkStats(RCRTCNetworkStats stats)
-        {
-            ONSDelegate.Invoke(stats);
-        }
-
-        public void OnLocalAudioStats(RCRTCLocalAudioStats stats)
-        {
-        }
-
-        public void OnLocalVideoStats(RCRTCLocalVideoStats stats)
-        {
-        }
-
-        public void OnRemoteAudioStats(String userId, RCRTCRemoteAudioStats stats)
-        {
-        }
-
-        public void OnRemoteVideoStats(String userId, RCRTCRemoteVideoStats stats)
-        {
-        }
-
-        public void OnLiveMixAudioStats(RCRTCRemoteAudioStats stats)
-        {
-            OLMASDelegate.Invoke(stats);
-        }
-
-        public void OnLiveMixVideoStats(RCRTCRemoteVideoStats stats)
-        {
-            OLMVSDelegate.Invoke(stats);
-        }
-
-        public void OnLocalCustomAudioStats(String tag, RCRTCLocalAudioStats stats)
-        {
-        }
-
-        public void OnLocalCustomVideoStats(String tag, RCRTCLocalVideoStats stats)
-        {
-        }
-
-        public void OnRemoteCustomAudioStats(String userId, String tag, RCRTCRemoteAudioStats stats)
-        {
-        }
-
-        public void OnRemoteCustomVideoStats(String userId, String tag, RCRTCRemoteVideoStats stats)
-        {
-        }
-
-        private readonly OnNetworkStatsDelegate ONSDelegate;
-        private readonly OnLiveMixAudioStatsDelegate OLMASDelegate;
-        private readonly OnLiveMixVideoStatsDelegate OLMVSDelegate;
-    }
-
-    public delegate void OnNetworkStatsDelegate(RCRTCNetworkStats stats);
-    public delegate void OnLocalAudioStatsDelegate(RCRTCLocalAudioStats stats);
-    public delegate void OnLocalVideoStatsDelegate(RCRTCLocalVideoStats stats);
-    public delegate void OnRemoteAudioStatsDelegate(String userId, RCRTCRemoteAudioStats stats);
-    public delegate void OnRemoteVideoStatsDelegate(String userId, RCRTCRemoteVideoStats stats);
-    public delegate void OnLiveMixAudioStatsDelegate(RCRTCRemoteAudioStats stats);
-    public delegate void OnLiveMixVideoStatsDelegate(RCRTCRemoteVideoStats stats);
 
 }

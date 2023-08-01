@@ -191,29 +191,29 @@ namespace cn_rongcloud_rtc_unity
     /// 远端用户加入房间操作回调
     /// </summary>
     /// <param name="userId">远端用户 userId</param>
-    public delegate void OnUserJoinedDelegate(String userId);
+    public delegate void OnUserJoinedDelegate(String roomId, String userId);
     /// <summary>
     /// 远端用户因离线离开房间操作回调
     /// </summary>
     /// <param name="userId">远端用户 userId</param>
-    public delegate void OnUserOfflineDelegate(String userId);
+    public delegate void OnUserOfflineDelegate(String roomId, String userId);
     /// <summary>
     /// 远端用户离开房间操作回调
     /// </summary>
     /// <param name="userId">远端用户 userId</param>
-    public delegate void OnUserLeftDelegate(String userId);
+    public delegate void OnUserLeftDelegate(String roomId, String userId);
     /// <summary>
     /// 远端用户发布资源操作回调参数
     /// </summary>
     /// <param name="userId">远端用户 userId</param>
     /// <param name="type">媒体类型</param>
-    public delegate void OnRemotePublishedDelegate(String userId, RCRTCMediaType type);
+    public delegate void OnRemotePublishedDelegate(String roomId, String userId, RCRTCMediaType type);
     /// <summary>
     /// 远端用户取消发布资源操作回调参数
     /// </summary>
     /// <param name="userId">远端用户 userId</param>
     /// <param name="type">媒体类型</param>
-    public delegate void OnRemoteUnpublishedDelegate(String userId, RCRTCMediaType type);
+    public delegate void OnRemoteUnpublishedDelegate(String roomId, String userId, RCRTCMediaType type);
     /// <summary>
     /// 直播观众用户收到远端用户发布直播合流资源操作回调
     /// </summary>
@@ -230,19 +230,305 @@ namespace cn_rongcloud_rtc_unity
     /// <param name="userId">远端用户 userId</param>
     /// <param name="type">媒体类型</param>
     /// <param name="disabled">是否关闭, YES: 关闭, NO: 打开</param>
-    public delegate void OnRemoteStateChangedDelegate(String userId, RCRTCMediaType type, bool disabled);
+    public delegate void OnRemoteStateChangedDelegate(String roomId, String userId, RCRTCMediaType type, bool disabled);
     /// <summary>
     /// 本地会议用户或直播主播用户收到远端用户第一帧回调
     /// </summary>
     /// <param name="userId">远端用户 userId</param>
     /// <param name="type">媒体类型</param>
-    public delegate void OnRemoteFirstFrameDelegate(String userId, RCRTCMediaType type);
+    public delegate void OnRemoteFirstFrameDelegate(String roomId, String userId, RCRTCMediaType type);
     /// <summary>
     /// 观众用户收到远端用户第一个音频或视频关键帧回调
     /// </summary>
     /// <param name="type">媒体类型</param>
     public delegate void OnRemoteLiveMixFirstFrameDelegate(RCRTCMediaType type);
-
+    
+    /// <summary>
+    /// 设置合流布局背景颜色操作回调
+    /// </summary>
+    /// <param name="code">0: 调用成功, 非0: 失败</param>
+    /// <param name="errMsg">失败原因</param>
+    public delegate void OnLiveMixBackgroundColorSetDelegate(int code, string errMsg);
+    
+    /// <summary>
+    /// 混音进度
+    /// </summary>
+    /// <param name="progress">进度</param>
+    public delegate void OnAudioMixingProgressReportedDelegate(float progress);
+    
+    /// <summary>
+    /// 本地用户发布自定义资源完毕
+    /// </summary>
+    /// <param name="tag">自定义流标签</param>
+    public delegate void OnCustomStreamPublishedDelegate(string tag, int code, string errMsg);
+    
+    /// <summary>
+    /// 本地用户发布自定义资源完毕
+    /// </summary>
+    /// <param name="tag">自定义流标签</param>
+    public delegate void OnCustomStreamPublishFinishedDelegate(string tag);
+    
+    /// <summary>
+    /// 本地用户取消发布自定义资源回调
+    /// </summary>
+    /// <param name="tag">自定义流标签</param>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误信息</param>
+    public delegate void OnCustomStreamUnpublishedDelegate(string tag, int code, string errMsg);
+    
+    /// <summary>
+    /// 远端用户发布自定义资源操作回调
+    /// </summary>
+    /// <param name="roomId">房间id</param>
+    /// <param name="userId">用户id</param>
+    /// <param name="tag">自定义流标签</param>
+    public delegate void OnRemoteCustomStreamPublishedDelegate(string roomId, string userId, string tag,
+                                                               RCRTCMediaType type);
+    
+    /// <summary>
+    /// 远端用户取消发布自定义资源操作回调
+    /// </summary>
+    /// <param name="roomId">房间id</param>
+    /// <param name="userId">用户id</param>
+    /// <param name="tag">自定义流标签</param>
+    public delegate void OnRemoteCustomStreamUnpublishedDelegate(string roomId, string userId, string tag,
+                                                                 RCRTCMediaType type);
+    
+    /// <summary>
+    /// 远端用户自定义资源状态操作回调
+    /// </summary>
+    /// <param name="roomId">房间id</param>
+    /// <param name="userId">用户id</param>
+    /// <param name="tag">自定义流标签</param>
+    /// <param name="disabled">是否禁用</param>
+    public delegate void OnRemoteCustomStreamStateChangedDelegate(string roomId, string userId, string tag,
+                                                                  RCRTCMediaType type, bool disabled);
+    
+    /// <summary>
+    /// 收到远端用户自定义资源第一帧数据
+    /// </summary>
+    /// <param name="roomId">房间id</param>
+    /// <param name="userId">用户id</param>
+    /// <param name="tag">自定义流标签</param>
+    public delegate void OnRemoteCustomStreamFirstFrameDelegate(string roomId, string userId, string tag,
+                                                                RCRTCMediaType type);
+    
+    /// <summary>
+    /// 订阅远端用户发布的自定义资源操作回调
+    /// </summary>
+    /// <param name="userId">用户id</param>
+    /// <param name="tag">自定义流标签</param>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误信息</param>
+    public delegate void OnCustomStreamSubscribedDelegate(string userId, string tag, RCRTCMediaType type, int code,
+                                                          string errMsg);
+    
+    /// <summary>
+    /// 取消订阅远端用户发布的自定义资源操作回调
+    /// </summary>
+    /// <param name="userId">用户id</param>
+    /// <param name="tag">自定义流标签</param>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误信息</param>
+    public delegate void OnCustomStreamUnsubscribedDelegate(string userId, string tag, RCRTCMediaType type, int code,
+                                                            string errMsg);
+    
+    /// <summary>
+    /// 请求加入子房间回调
+    /// </summary>
+    /// <param name="roomId">目标房间id</param>
+    /// <param name="userId">目标主播id</param>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误信息</param>
+    public delegate void OnJoinSubRoomRequestedDelegate(string roomId, string userId, int code, string errMsg);
+    
+    /// <summary>
+    /// 取消请求加入子房间回调
+    /// </summary>
+    /// <param name="roomId">目标房间id</param>
+    /// <param name="userId">目标主播id</param>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误信息</param>
+    public delegate void OnJoinSubRoomRequestCanceledDelegate(string roomId, string userId, int code, string errMsg);
+    
+    /// <summary>
+    /// 响应请求加入子房间回调
+    /// </summary>
+    /// <param name="roomId">目标房间id</param>
+    /// <param name="userId">目标主播id</param>
+    /// <param name="agree">是否同意</param>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误信息</param>
+    public delegate void OnJoinSubRoomRequestRespondedDelegate(string roomId, string userId, bool agree, int code,
+                                                               string errMsg);
+    
+    /// <summary>
+    /// 收到加入请求回调
+    /// </summary>
+    /// <param name="roomId">请求来源房间id</param>
+    /// <param name="userId">请求来源主播id</param>
+    /// <param name="extra">扩展信息</param>
+    public delegate void OnJoinSubRoomRequestReceivedDelegate(string roomId, string userId, string extra);
+    
+    /// <summary>
+    /// 收到取消加入请求回调
+    /// </summary>
+    /// <param name="roomId">请求来源房间id</param>
+    /// <param name="userId">请求来源主播id</param>
+    /// <param name="extra">扩展信息</param>
+    public delegate void OnCancelJoinSubRoomRequestReceivedDelegate(string roomId, string userId, string extra);
+    
+    /// <summary>
+    /// 收到加入请求响应回调
+    /// </summary>
+    /// <param name="roomId">响应来源房间id</param>
+    /// <param name="userId">响应来源主播id</param>
+    /// <param name="agree">是否同意</param>
+    /// <param name="extra">扩展信息</param>
+    public delegate void OnJoinSubRoomRequestResponseReceivedDelegate(string roomId, string userId, bool agree,
+                                                                      string extra);
+    
+    /// <summary>
+    /// 加入子房间回调
+    /// </summary>
+    /// <param name="roomId">子房间id</param>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误信息</param>
+    public delegate void OnSubRoomJoinedDelegate(string roomId, int code, string errMsg);
+    
+    /// <summary>
+    /// 离开子房间回调
+    /// </summary>
+    /// <param name="roomId">子房间id</param>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误信息</param>
+    public delegate void OnSubRoomLeftDelegate(string roomId, int code, string errMsg);
+    
+    /// <summary>
+    /// 连麦中的子房间回调
+    /// </summary>
+    /// <param name="roomId">子房间id</param>
+    public delegate void OnSubRoomBandedDelegate(string roomId);
+    
+    /// <summary>
+    /// 子房间结束连麦回调
+    /// </summary>
+    /// <param name="roomId">子房间id</param>
+    /// <param name="userId">结束连麦的用户id</param>
+    public delegate void OnSubRoomDisbandDelegate(string roomId, string userId);
+    
+    /// <summary>
+    /// 切换直播角色回调
+    /// </summary>
+    /// <param name="current">当前角色</param>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误消息</param>
+    public delegate void OnLiveRoleSwitchedDelegate(RCRTCRole current, int code, string errMsg);
+    
+    /// <summary>
+    /// 远端用户身份切换回调
+    /// </summary>
+    /// <param name="roomId">房间号</param>
+    /// <param name="userId">用户id</param>
+    /// <param name="role">用户角色</param>
+    public delegate void OnRemoteLiveRoleSwitchedDelegate(string roomId, string userId, RCRTCRole role);
+    
+    /// <summary>
+    /// 开启直播内置 cdn 结果回调
+    /// </summary>
+    /// <param name="enable">是否开启</param>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误消息</param>
+    public delegate void OnLiveMixInnerCdnStreamEnabledDelegate(bool enable, int code, string errMsg);
+    
+    /// <summary>
+    /// 直播内置 cdn 资源发布回调
+    /// </summary>
+    public delegate void OnRemoteLiveMixInnerCdnStreamPublishedDelegate();
+    
+    /// <summary>
+    /// 直播内置 cdn 资源取消发布回调
+    /// </summary>
+    public delegate void OnRemoteLiveMixInnerCdnStreamUnpublishedDelegate();
+    
+    /// <summary>
+    /// 订阅直播内置 cdn 资源回调
+    /// </summary>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误消息</param>
+    public delegate void OnLiveMixInnerCdnStreamSubscribedDelegate(int code, string errMsg);
+    
+    /// <summary>
+    /// 取消订阅直播内置 cdn 资源回调
+    /// </summary>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误消息</param>
+    public delegate void OnLiveMixInnerCdnStreamUnsubscribedDelegate(int code, string errMsg);
+    
+    /// <summary>
+    /// 观众端设置订阅 cdn 流的分辨率的回调
+    /// </summary>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误消息</param>
+    public delegate void OnLocalLiveMixInnerCdnVideoResolutionSetDelegate(int code, string errMsg);
+    
+    /// <summary>
+    /// 观众端 设置订阅 cdn 流的帧率的回调
+    /// </summary>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误消息</param>
+    public delegate void OnLocalLiveMixInnerCdnVideoFpsSetDelegate(int code, string errMsg);
+    
+    /// <summary>
+    /// 设置水印的回调
+    /// </summary>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误消息</param>
+    public delegate void OnWatermarkSetDelegate(int code, string errMsg);
+    
+    /// <summary>
+    /// 移除水印的回调
+    /// </summary>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误消息</param>
+    public delegate void OnWatermarkRemovedDelegate(int code, string errMsg);
+    
+    /// <summary>
+    /// 开启网络探测结果回调
+    /// </summary>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误消息</param>
+    public delegate void OnNetworkProbeStartedDelegate(int code, string errMsg);
+    
+    /// <summary>
+    /// 关闭网络探测结果回调
+    /// </summary>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误消息</param>
+    public delegate void OnNetworkProbeStoppedDelegate(int code, string errMsg);
+    
+    /// <summary>
+    /// 开启 SEI 功能结果回调
+    /// </summary>
+    /// <param name="enable">是否开启</param>
+    /// <param name="code">错误码</param>
+    /// <param name="errMsg">错误消息</param>
+    public delegate void OnSeiEnabledDelegate(bool enable, int code, string errMsg);
+    
+    /// <summary>
+    /// 收到 SEI 信息回调
+    /// </summary>
+    /// <param name="roomId">房间 id</param>
+    /// <param name="userId">远端用户 id</param>
+    /// <param name="sei">SEI 信息</param>
+    public delegate void OnSeiReceivedDelegate(string roomId, string userId, string sei);
+    
+    /// <summary>
+    /// 观众收到合流 SEI 信息回调
+    /// </summary>
+    /// <param name="sei">SEI 信息</param>
+    public delegate void OnLiveMixSeiReceivedDelegate(string sei);
+    
 #if UNITY_STANDALONE_WIN
     /// <summary>
     /// 摄像头改变回调

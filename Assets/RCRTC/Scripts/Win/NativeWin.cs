@@ -9,10 +9,7 @@ namespace cn_rongcloud_rtc_unity
     {
         const string RTC_Lib = "RTCWinWapper";
 
-        #region RTC Engine
-        [DllImport(RTC_Lib, CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        internal static extern void rcrtc_init_wrapper_logger(int level);
-
+#region RTC Engine
         [DllImport(RTC_Lib, CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
         internal static extern IntPtr rcrtc_create_engine(IntPtr client);
 
@@ -66,9 +63,21 @@ namespace cn_rongcloud_rtc_unity
 
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_set_stats_listener(IntPtr engine, ref rtc_stats_listener_proxy proxy);
-        #endregion
 
-        #region Room
+        [DllImport("__Internal", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        internal static extern void rcrtc_set_new_listener(
+            OnCustomStreamPublishedDelegate onCustomStreamPublished, OnCustomStreamPublishFinishedDelegate onCustomStreamPublishFinished,
+            OnCustomStreamUnpublishedDelegate onCustomStreamUnpublished,
+            OnRemoteCustomStreamPublishedDelegate onRemoteCustomStreamPublished,
+            OnRemoteCustomStreamUnpublishedDelegate onRemoteCustomStreamUnpublished,
+            OnRemoteCustomStreamStateChangedDelegate onRemoteCustomStreamStateChanged,
+            OnRemoteCustomStreamFirstFrameDelegate onRemoteCustomStreamFirstFrame,
+            OnCustomStreamSubscribedDelegate onCustomStreamSubscribed, OnCustomStreamUnsubscribedDelegate onCustomStreamUnsubscribed,
+            OnLiveRoleSwitchedDelegate onLiveRoleSwitched, OnRemoteLiveRoleSwitchedDelegate onRemoteLiveRoleSwitched,
+            OnLiveMixBackgroundColorSetDelegate onLiveMixBackgroundColorSet);
+#endregion
+
+#region Room
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_join_room(IntPtr engine, string id);
 
@@ -80,17 +89,20 @@ namespace cn_rongcloud_rtc_unity
 
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern string rcrtc_get_session_id(IntPtr engine);
-        #endregion
 
-        #region Publish
+        [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        internal static extern int rcrtc_switch_live_role(IntPtr engin, int role);
+#endregion
+
+#region Publish
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_publish(IntPtr engine, int type);
 
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_unpublish(IntPtr engine, int type);
-        #endregion
+#endregion
 
-        #region Subscribe
+#region Subscribe
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_subscribe(IntPtr engine, string id, int type, bool tiny);
 
@@ -108,9 +120,9 @@ namespace cn_rongcloud_rtc_unity
 
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_unsubscribe_live_mix(IntPtr engine, int type);
-        #endregion
+#endregion
 
-        #region Config
+#region Config
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_set_audio_config(IntPtr engine, ref rtc_audio_config config);
 
@@ -119,9 +131,9 @@ namespace cn_rongcloud_rtc_unity
 
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_adjust_local_volume(IntPtr engine, int volume);
-        #endregion
+#endregion
 
-        #region Divice
+#region Divice
 
         /// Camera
 
@@ -169,9 +181,9 @@ namespace cn_rongcloud_rtc_unity
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern void rcrtc_set_speaker_change_callback(OnSpeakerListChangeDelegate cb);
 
-        #endregion
+#endregion
 
-        #region Mute
+#region Mute
         [DllImport(RTC_Lib, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_mute_local_stream(IntPtr engine, int type, bool mute);
 
@@ -180,9 +192,9 @@ namespace cn_rongcloud_rtc_unity
 
         [DllImport(RTC_Lib, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_mute_all_remote_audio_streams(IntPtr engine, bool mute);
-        #endregion
+#endregion
 
-        #region Audio & Video Data
+#region Audio & Video Data
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_set_local_video_listener(IntPtr engine, ref rtc_video_listener_proxy proxy);
 
@@ -200,14 +212,23 @@ namespace cn_rongcloud_rtc_unity
 
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_memory_copy(IntPtr s, IntPtr d, int length);
-        #endregion
 
-        #region Live
+        [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        internal static extern int rcrtc_set_local_custom_stream_video_listener(IntPtr engine, string tag, ref rtc_video_listener_proxy proxy);
+
+        [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        internal static extern int rcrtc_set_remote_custom_stream_video_listener(IntPtr engine, string userId, string tag, ref rtc_video_listener_proxy proxy);
+#endregion
+
+#region LiveMix
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_add_live_cdn(IntPtr engine, string url);
 
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_remove_live_cdn(IntPtr engine, string url);
+
+        [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        internal static extern int rcrtc_set_live_mix_background_color(IntPtr engine, int color);
 
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_set_live_mix_layout_mode(IntPtr engine, int mode);
@@ -232,9 +253,9 @@ namespace cn_rongcloud_rtc_unity
 
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_set_live_mix_audio_bitrate(IntPtr engine, int bitrate);
-        #endregion
+#endregion
 
-        #region Audio Effect
+#region Audio Effect
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_create_audio_effect(IntPtr engine, string path, int id);
 
@@ -270,9 +291,9 @@ namespace cn_rongcloud_rtc_unity
 
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_adjust_all_audio_effects_volume(IntPtr engine, int volume);
-        #endregion
+#endregion
 
-        #region Audio Mix
+#region Audio Mix
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_start_audio_mixing(IntPtr engine, string path, int mode, bool playback, int loop);
 
@@ -308,7 +329,33 @@ namespace cn_rongcloud_rtc_unity
 
         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         internal static extern int rcrtc_get_audio_mixing_duration(IntPtr engine);
-        #endregion
+#endregion
+
+#region CustomStream
+         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+         internal static extern int rcrtc_create_custom_stream_from_file(IntPtr engine, string path, string tag, bool replace, bool playback);
+
+         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+         internal static extern int rcrtc_set_custom_stream_video_config(IntPtr engine, string tag, ref rtc_video_config cconfig);
+
+         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+         internal static extern int rcrtc_mute_local_custom_stream(IntPtr engine, string tag, bool mute);
+
+         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+         internal static extern int rcrtc_mute_remote_custom_stream(IntPtr engine, string userId, string tag, int type, bool mute);
+
+         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+         internal static extern int rcrtc_publich_custom_stream(IntPtr engine, string tag);
+
+         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+         internal static extern int rcrtc_unpublich_custom_stream(IntPtr engine, string tag);
+
+         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+         internal static extern int rcrtc_subscribe_custom_stream(IntPtr engine, string userId, string tag, int type);
+
+         [DllImport(RTC_Lib, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+         internal static extern int rcrtc_unsubscribe_custom_stream(IntPtr engine, string userId, string tag, int type);
+#endregion
 
     }
 }

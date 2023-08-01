@@ -10,58 +10,46 @@ using AOT;
 
 namespace cn_rongcloud_rtc_unity
 {
-    internal class RCRTCEngineIOS : RCRTCEngine
+    internal partial class RCRTCEngineIOS : RCRTCEngine
     {
+    
         internal RCRTCEngineIOS(RCRTCEngineSetup setup)
         {
             rtc_set_engine_listeners(
-                on_rtc_error,
-                on_rtc_kicked,
-                on_rtc_room_joined,
-                on_rtc_room_left,
-                on_rtc_published,
-                on_rtc_unpublished,
-                on_rtc_subscribed,
-                on_rtc_unsubscribed,
-                on_rtc_live_mix_subscribed,
-                on_rtc_live_mix_unsubscribed,
-                on_rtc_enable_camera,
-                on_rtc_switch_camera,
-                on_rtc_live_cdn_added,
-                on_rtc_live_cdn_removed,
-                on_rtc_live_mix_layout_mode_set,
-                on_rtc_live_mix_render_mode_set,
-                on_rtc_live_mix_custom_layouts_set,
-                on_rtc_live_mix_custom_audios_set,
-                on_rtc_live_mix_video_bitrate_set,
-                on_rtc_live_mix_video_resolution_set,
-                on_rtc_live_mix_video_fps_set,
-                on_rtc_live_mix_audio_bitrate_set,
-                on_rtc_audio_effect_created,
-                on_rtc_audio_effect_finished,
-                on_rtc_audio_mixing_started,
-                on_rtc_audio_mixing_paused,
-                on_rtc_audio_mixing_stopped,
-                on_rtc_audio_mixing_finished,
-                on_rtc_user_joined,
-                on_rtc_user_offline,
-                on_rtc_user_left,
-                on_rtc_remote_published,
-                on_rtc_remote_unpublished,
-                on_rtc_remote_live_mix_published,
-                on_rtc_remote_live_mix_unpublished,
-                on_rtc_remote_state_changed,
-                on_rtc_remote_first_frame,
-                on_rtc_remote_live_mix_first_frame
-                );
+                on_rtc_error, on_rtc_kicked, on_rtc_room_joined, on_rtc_room_left, on_rtc_published, on_rtc_unpublished,
+                on_rtc_subscribed, on_rtc_unsubscribed, on_rtc_live_mix_subscribed, on_rtc_live_mix_unsubscribed,
+                on_rtc_enable_camera, on_rtc_switch_camera, on_rtc_live_cdn_added, on_rtc_live_cdn_removed,
+                on_rtc_live_mix_layout_mode_set, on_rtc_live_mix_render_mode_set, on_rtc_live_mix_custom_layouts_set,
+                on_rtc_live_mix_custom_audios_set, on_rtc_live_mix_video_bitrate_set, on_rtc_live_mix_video_resolution_set,
+                on_rtc_live_mix_video_fps_set, on_rtc_live_mix_audio_bitrate_set, on_rtc_audio_effect_created,
+                on_rtc_audio_effect_finished, on_rtc_audio_mixing_started, on_rtc_audio_mixing_paused,
+                on_rtc_audio_mixing_stopped, on_rtc_audio_mixing_finished, on_rtc_user_joined, on_rtc_user_offline,
+                on_rtc_user_left, on_rtc_remote_published, on_rtc_remote_unpublished, on_rtc_remote_live_mix_published,
+                on_rtc_remote_live_mix_unpublished, on_rtc_remote_state_changed, on_rtc_remote_first_frame,
+                on_rtc_remote_live_mix_first_frame);
+            NativeIOS.rtc_set_IRCRTCIWListener(
+                on_live_mix_background_color_set, on_audio_mixing_progress_reported, on_custom_stream_published,
+                on_custom_stream_publish_finished, on_custom_stream_unpublished, on_remote_custom_stream_published,
+                on_remote_custom_stream_unpublished, on_remote_custom_stream_state_changed,
+                on_remote_custom_stream_first_frame, on_custom_stream_subscribed, on_custom_stream_unsubscribed,
+                on_join_sub_room_requested, on_join_sub_room_request_canceled, on_join_sub_room_request_responded,
+                on_join_sub_room_request_received, on_cancel_join_sub_room_request_received,
+                on_join_sub_room_request_response_received, on_sub_room_joined, on_sub_room_left, on_sub_room_banded,
+                on_sub_room_disband, on_live_role_switched, on_remote_live_role_switched,
+                on_live_mix_inner_cdn_stream_enabled, on_remote_live_mix_inner_cdn_stream_published,
+                on_remote_live_mix_inner_cdn_stream_unpublished, on_live_mix_inner_cdn_stream_subscribed,
+                on_live_mix_inner_cdn_stream_unsubscribed, on_local_live_mix_inner_cdn_video_resolution_set,
+                on_local_live_mix_inner_cdn_video_fps_set, on_watermark_set, on_watermark_removed, on_network_probe_started,
+                on_network_probe_stopped, on_sei_enabled, on_sei_received, on_live_mix_sei_received);
+    
             if (setup == null)
             {
-                engine = rtc_create_engine();
+                engine = NativeIOS.rtc_create_engine();
             }
             else
             {
                 rtc_engine_setup cobject = toEngineSetup(setup);
-                engine = rtc_create_engine_with_setup(ref cobject);
+                engine = NativeIOS.rtc_create_engine_with_setup(ref cobject);
                 if (cobject.audioSetup != IntPtr.Zero)
                 {
                     Marshal.FreeHGlobal(cobject.audioSetup);
@@ -74,158 +62,158 @@ namespace cn_rongcloud_rtc_unity
             AudioListeners = new Dictionary<String, RCRTCOnWritableAudioFrameListener>();
             Instance = this;
         }
-
+    
         public override void Destroy()
         {
             if (engine != IntPtr.Zero)
             {
-                rtc_release_engine(engine);
+                NativeIOS.rtc_release_engine(engine);
                 engine = IntPtr.Zero;
             }
-
+    
             Instance = null;
             StatsListener = null;
             AudioListeners.Clear();
             AudioListeners = null;
+            Listeners.Clear();
             base.Destroy();
         }
-
+    
         public override int JoinRoom(String roomId, RCRTCRoomSetup setup)
         {
             rtc_room_setup cobject = toRoomSetup(setup);
-            int ret = rtc_join_room(engine, roomId, ref cobject);
-            return ret;
+            return NativeIOS.rtc_join_room(engine, roomId, ref cobject);
         }
-
+    
         public override int LeaveRoom()
         {
-            return rtc_leave_room(engine);
+            return NativeIOS.rtc_leave_room(engine);
         }
-
+    
         public override int Publish(RCRTCMediaType type)
         {
-            return rtc_publish(engine, (int)type);
+            return NativeIOS.rtc_publish(engine, (int)type);
         }
-
+    
         public override int Unpublish(RCRTCMediaType type)
         {
-            return rtc_unpublish(engine, (int)type);
+            return NativeIOS.rtc_unpublish(engine, (int)type);
         }
-
+    
         public override int Subscribe(String userId, RCRTCMediaType type, bool tiny)
         {
-            return rtc_subscribe(engine, userId, (int)type, tiny);
+            return NativeIOS.rtc_subscribe(engine, userId, (int)type, tiny);
         }
-
+    
         public override int Subscribe(IList<String> userIds, RCRTCMediaType type, bool tiny)
         {
             List<String> list = new List<string>(userIds);
-            return rtc_subscribe_with_user_ids(engine, list.ToArray(), list.Count, (int)type, tiny);
+            return NativeIOS.rtc_subscribe_with_user_ids(engine, list.ToArray(), list.Count, (int)type, tiny);
         }
-
+    
         public override int SubscribeLiveMix(RCRTCMediaType type, bool tiny)
         {
-            return rtc_subscribe_live_mix(engine, (int)type, tiny);
+            return NativeIOS.rtc_subscribe_live_mix(engine, (int)type, tiny);
         }
-
+    
         public override int Unsubscribe(String userId, RCRTCMediaType type)
         {
-            return rtc_unsubscribe(engine, userId, (int)type);
+            return NativeIOS.rtc_unsubscribe(engine, userId, (int)type);
         }
-
+    
         public override int Unsubscribe(IList<String> userIds, RCRTCMediaType type)
         {
             List<String> list = new List<string>(userIds);
-            return rtc_unsubscribe_with_user_ids(engine, list.ToArray(), list.Count, (int)type);
+            return NativeIOS.rtc_unsubscribe_with_user_ids(engine, list.ToArray(), list.Count, (int)type);
         }
-
+    
         public override int UnsubscribeLiveMix(RCRTCMediaType type)
         {
-            return rtc_unsubscribe_live_mix(engine, (int)type);
+            return NativeIOS.rtc_unsubscribe_live_mix(engine, (int)type);
         }
-
+    
         public override int SetAudioConfig(RCRTCAudioConfig config)
         {
             rtc_audio_config cobject = toAudioConfig(config);
-            return rtc_set_audio_config(engine, ref cobject);
+            return NativeIOS.rtc_set_audio_config(engine, ref cobject);
         }
-
+    
         public override int SetVideoConfig(RCRTCVideoConfig config, bool tiny)
         {
             rtc_video_config cobject = toVideoConfig(config);
-            return rtc_set_video_config(engine, ref cobject, tiny);
+            return NativeIOS.rtc_set_video_config(engine, ref cobject, tiny);
         }
-
+    
         public override int EnableMicrophone(bool enable)
         {
-            return rtc_enable_microphone(engine, enable);
+            return NativeIOS.rtc_enable_microphone(engine, enable);
         }
-
+    
         public override int EnableSpeaker(bool enable)
         {
-            return rtc_enable_speaker(engine, enable);
+            return NativeIOS.rtc_enable_speaker(engine, enable);
         }
-
+    
         public override int AdjustLocalVolume(int volume)
         {
-            return rtc_adjust_local_volume(engine, volume);
+            return NativeIOS.rtc_adjust_local_volume(engine, volume);
         }
-
+    
         public override int EnableCamera(bool enable, RCRTCCamera camera)
         {
-            return rtc_enable_camera(engine, enable, (int)camera);
+            return NativeIOS.rtc_enable_camera(engine, enable, (int)camera);
         }
-
+    
         public override int SwitchCamera()
         {
-            return rtc_switch_camera(engine);
+            return NativeIOS.rtc_switch_camera(engine);
         }
-
+    
         public override RCRTCCamera WhichCamera()
         {
-            return (RCRTCCamera)rtc_which_camera(engine);
+            return (RCRTCCamera)NativeIOS.rtc_which_camera(engine);
         }
-
+    
         public override bool IsCameraFocusSupported()
         {
-            return rtc_is_camera_focus_supported(engine);
+            return NativeIOS.rtc_is_camera_focus_supported(engine);
         }
-
+    
         public override bool IsCameraExposurePositionSupported()
         {
-            return rtc_is_camera_exposure_position_supported(engine);
+            return NativeIOS.rtc_is_camera_exposure_position_supported(engine);
         }
-
+    
         public override int SetCameraFocusPositionInPreview(double x, double y)
         {
-            return rtc_set_camera_focus_position_in_preview(engine, x, y);
+            return NativeIOS.rtc_set_camera_focus_position_in_preview(engine, x, y);
         }
-
+    
         public override int SetCameraExposurePositionInPreview(double x, double y)
         {
-            return rtc_set_camera_exposure_position_in_preview(engine, x, y);
+            return NativeIOS.rtc_set_camera_exposure_position_in_preview(engine, x, y);
         }
-
+    
         public override int SetCameraCaptureOrientation(RCRTCCameraCaptureOrientation orientation)
         {
-            return rtc_set_camera_capture_orientation(engine, (int)orientation);
+            return NativeIOS.rtc_set_camera_capture_orientation(engine, (int)orientation);
         }
-
+    
         public override int MuteLocalStream(RCRTCMediaType type, bool mute)
         {
-            return rtc_mute_local_stream(engine, (int)type, mute);
+            return NativeIOS.rtc_mute_local_stream(engine, (int)type, mute);
         }
-
+    
         public override int MuteRemoteStream(String userId, RCRTCMediaType type, bool mute)
         {
-            return rtc_mute_remote_stream(engine, userId, (int)type, mute);
+            return NativeIOS.rtc_mute_remote_stream(engine, userId, (int)type, mute);
         }
-
+    
         public override int MuteAllRemoteAudioStreams(bool mute)
         {
-            return rtc_mute_all_remote_audio_streams(engine, mute);
+            return NativeIOS.rtc_mute_all_remote_audio_streams(engine, mute);
         }
-
+    
         private IntPtr toNativeView(RCRTCView view)
         {
             BindingFlags flag = BindingFlags.Instance | BindingFlags.NonPublic;
@@ -234,59 +222,74 @@ namespace cn_rongcloud_rtc_unity
             object[] arguments = { engine };
             method.Invoke(view, arguments);
             FieldInfo field = type.GetField("_view", flag);
-            return (IntPtr) field.GetValue(view);
+            return (IntPtr)field.GetValue(view);
         }
-
+    
         public override int SetLocalView(RCRTCView view)
         {
-            return rtc_set_local_view(engine, toNativeView(view));
+            return NativeIOS.rtc_set_local_view(engine, toNativeView(view));
         }
-
+    
         public override int RemoveLocalView()
         {
-            return rtc_remove_local_view(engine);
+            return NativeIOS.rtc_remove_local_view(engine);
         }
-
+    
         public override int SetRemoteView(String userId, RCRTCView view)
         {
-            return rtc_set_remote_view(engine, userId, toNativeView(view));
+            return NativeIOS.rtc_set_remote_view(engine, userId, toNativeView(view));
         }
-
+    
         public override int RemoveRemoteView(String userId)
         {
-            return rtc_remove_remote_view(engine, userId);
+            return NativeIOS.rtc_remove_remote_view(engine, userId);
         }
-
+    
         public override int SetLiveMixView(RCRTCView view)
         {
-            return rtc_set_live_mix_view(engine, toNativeView(view));
+            return NativeIOS.rtc_set_live_mix_view(engine, toNativeView(view));
         }
-
+    
         public override int RemoveLiveMixView()
         {
-            return rtc_remove_live_mix_view(engine);
+            return NativeIOS.rtc_remove_live_mix_view(engine);
         }
-
+    
+        public override int SetLiveMixInnerCdnStreamView(RCRTCView view)
+        {
+            return NativeIOS.rtc_set_live_mix_inner_cdn_stream_view(engine, toNativeView(view));
+        }
+    
+        public override int SetLocalCustomStreamView(string tag, RCRTCView view)
+        {
+            return NativeIOS.rtc_set_local_custom_stream_view(tag, toNativeView(view));
+        }
+    
+        public override int SetRemoteCustomStreamView(string userId, string tag, RCRTCView view)
+        {
+            return NativeIOS.rtc_set_remote_custom_stream_view(userId, tag, toNativeView(view));
+        }
+    
         public override int AddLiveCdn(String url)
         {
-            return rtc_add_live_cdn(engine, url);
+            return NativeIOS.rtc_add_live_cdn(engine, url);
         }
-
+    
         public override int RemoveLiveCdn(String url)
         {
-            return rtc_remove_live_cdn(engine, url);
+            return NativeIOS.rtc_remove_live_cdn(engine, url);
         }
-
+    
         public override int SetLiveMixLayoutMode(RCRTCLiveMixLayoutMode mode)
         {
-            return rtc_set_live_mix_layout_mode(engine, (int)mode);
+            return NativeIOS.rtc_set_live_mix_layout_mode(engine, (int)mode);
         }
-
+    
         public override int SetLiveMixRenderMode(RCRTCLiveMixRenderMode mode)
         {
-            return rtc_set_live_mix_render_mode(engine, (int)mode);
+            return NativeIOS.rtc_set_live_mix_render_mode(engine, (int)mode);
         }
-
+    
         public override int SetLiveMixCustomLayouts(IList<RCRTCCustomLayout> layouts)
         {
             if (layouts == null || layouts.Count == 0)
@@ -296,181 +299,181 @@ namespace cn_rongcloud_rtc_unity
             {
                 cobjects[i] = toCustomLayout(layouts[i]);
             }
-
-            return rtc_set_live_mix_custom_layouts(engine, ref cobjects, layouts.Count);
+    
+            return NativeIOS.rtc_set_live_mix_custom_layouts(engine, ref cobjects, layouts.Count);
         }
-
+    
         public override int SetLiveMixCustomAudios(IList<String> userIds)
         {
             if (userIds == null || userIds.Count == 0)
                 return -1;
             List<String> list = new List<string>(userIds);
-            return rtc_set_live_mix_custom_audios(engine, list.ToArray(), list.Count);
+            return NativeIOS.rtc_set_live_mix_custom_audios(engine, list.ToArray(), list.Count);
         }
-
+    
         public override int SetLiveMixVideoBitrate(int bitrate, bool tiny)
         {
-            return rtc_set_live_mix_video_bitrate(engine, bitrate, tiny);
+            return NativeIOS.rtc_set_live_mix_video_bitrate(engine, bitrate, tiny);
         }
-
+    
         public override int SetLiveMixVideoResolution(int width, int height, bool tiny)
         {
-            return rtc_set_live_mix_video_resolution(engine, width, height, tiny);
+            return NativeIOS.rtc_set_live_mix_video_resolution(engine, width, height, tiny);
         }
-
+    
         public override int SetLiveMixVideoFps(RCRTCVideoFps fps, bool tiny)
         {
-            return rtc_set_live_mix_video_fps(engine, (int)fps, tiny);
+            return NativeIOS.rtc_set_live_mix_video_fps(engine, (int)fps, tiny);
         }
-
+    
         public override int SetLiveMixAudioBitrate(int bitrate)
         {
-            return rtc_set_live_mix_audio_bitrate(engine, bitrate);
+            return NativeIOS.rtc_set_live_mix_audio_bitrate(engine, bitrate);
         }
-
+    
         public override int SetStatsListener(RCRTCStatsListener listener)
         {
             rtc_stats_listener_proxy proxy = toStatsListenerProxy(listener);
-            return rtc_set_stats_listener(engine, ref proxy);
+            return NativeIOS.rtc_set_stats_listener(engine, ref proxy);
         }
-
+    
         public override int CreateAudioEffect(String path, int effectId)
         {
-            return rtc_create_audio_effect(engine, path, effectId);
+            return NativeIOS.rtc_create_audio_effect(engine, path, effectId);
         }
-
+    
         public override int ReleaseAudioEffect(int effectId)
         {
-            return rtc_release_audio_effect(engine, effectId);
+            return NativeIOS.rtc_release_audio_effect(engine, effectId);
         }
-
+    
         public override int PlayAudioEffect(int effectId, int volume, int loop)
         {
-            return rtc_play_audio_effect(engine, effectId, volume, loop);
+            return NativeIOS.rtc_play_audio_effect(engine, effectId, volume, loop);
         }
-
+    
         public override int PauseAudioEffect(int effectId)
         {
-            return rtc_pause_audio_effect(engine, effectId);
+            return NativeIOS.rtc_pause_audio_effect(engine, effectId);
         }
-
+    
         public override int PauseAllAudioEffects()
         {
-            return rtc_pause_all_audio_effects(engine);
+            return NativeIOS.rtc_pause_all_audio_effects(engine);
         }
-
+    
         public override int ResumeAudioEffect(int effectId)
         {
-            return rtc_resume_audio_effect(engine, effectId);
+            return NativeIOS.rtc_resume_audio_effect(engine, effectId);
         }
-
+    
         public override int ResumeAllAudioEffects()
         {
-            return rtc_resume_all_audio_effects(engine);
+            return NativeIOS.rtc_resume_all_audio_effects(engine);
         }
-
+    
         public override int StopAudioEffect(int effectId)
         {
-            return rtc_stop_audio_effect(engine, effectId);
+            return NativeIOS.rtc_stop_audio_effect(engine, effectId);
         }
-
+    
         public override int StopAllAudioEffects()
         {
-            return rtc_stop_all_audio_effects(engine);
+            return NativeIOS.rtc_stop_all_audio_effects(engine);
         }
-
+    
         public override int AdjustAudioEffectVolume(int effectId, int volume)
         {
-            return rtc_adjust_audio_effect_volume(engine, effectId, volume);
+            return NativeIOS.rtc_adjust_audio_effect_volume(engine, effectId, volume);
         }
-
+    
         public override int GetAudioEffectVolume(int effectId)
         {
-            return rtc_get_audio_effect_volume(engine, effectId);
+            return NativeIOS.rtc_get_audio_effect_volume(engine, effectId);
         }
-
+    
         public override int AdjustAllAudioEffectsVolume(int volume)
         {
-            return rtc_adjust_all_audio_effects_volume(engine, volume);
+            return NativeIOS.rtc_adjust_all_audio_effects_volume(engine, volume);
         }
-
+    
         public override int StartAudioMixing(String path, RCRTCAudioMixingMode mode, bool playback, int loop)
         {
-            return rtc_start_audio_mixing(engine, path, (int)mode, playback, loop);
+            return NativeIOS.rtc_start_audio_mixing(engine, path, (int)mode, playback, loop);
         }
-
+    
         public override int StopAudioMixing()
         {
-            return rtc_stop_audio_mixing(engine);
+            return NativeIOS.rtc_stop_audio_mixing(engine);
         }
-
+    
         public override int PauseAudioMixing()
         {
-            return rtc_pause_audio_mixing(engine);
+            return NativeIOS.rtc_pause_audio_mixing(engine);
         }
-
+    
         public override int ResumeAudioMixing()
         {
-            return rtc_resume_audio_mixing(engine);
+            return NativeIOS.rtc_resume_audio_mixing(engine);
         }
-
+    
         public override int AdjustAudioMixingVolume(int volume)
         {
-            return rtc_adjust_audio_mixing_volume(engine, volume);
+            return NativeIOS.rtc_adjust_audio_mixing_volume(engine, volume);
         }
-
+    
         public override int AdjustAudioMixingPlaybackVolume(int volume)
         {
-            return rtc_adjust_audio_mixing_playback_volume(engine, volume);
+            return NativeIOS.rtc_adjust_audio_mixing_playback_volume(engine, volume);
         }
-
+    
         public override int AdjustAudioMixingPublishVolume(int volume)
         {
-            return rtc_adjust_audio_mixing_publish_volume(engine, volume);
+            return NativeIOS.rtc_adjust_audio_mixing_publish_volume(engine, volume);
         }
-
+    
         public override int GetAudioMixingPlaybackVolume()
         {
-            return rtc_get_audio_mixing_playback_volume(engine);
+            return NativeIOS.rtc_get_audio_mixing_playback_volume(engine);
         }
-
+    
         public override int GetAudioMixingPublishVolume()
         {
-            return rtc_get_audio_mixing_publish_volume(engine);
+            return NativeIOS.rtc_get_audio_mixing_publish_volume(engine);
         }
-
+    
         public override int SetAudioMixingPosition(double position)
         {
-            return rtc_set_audio_mixing_position(engine, position);
+            return NativeIOS.rtc_set_audio_mixing_position(engine, position);
         }
-
+    
         public override double GetAudioMixingPosition()
         {
-            return rtc_get_audio_mixing_position(engine);
+            return NativeIOS.rtc_get_audio_mixing_position(engine);
         }
-
+    
         public override int GetAudioMixingDuration()
         {
-            return rtc_get_audio_mixing_duration(engine);
+            return NativeIOS.rtc_get_audio_mixing_duration(engine);
         }
-
+    
         public override int SetLocalAudioCapturedListener(RCRTCOnWritableAudioFrameListener listener)
         {
             rtc_writable_audio_frame_listener_proxy proxy = toWritableAudioFrameListener("", listener);
-            return rtc_set_local_audio_captured_listener(engine, ref proxy);
+            return NativeIOS.rtc_set_local_audio_captured_listener(engine, ref proxy);
         }
-
+    
         public override int SetRemoteAudioReceivedListener(String userId, RCRTCOnWritableAudioFrameListener listener)
         {
             rtc_writable_audio_frame_listener_proxy proxy = toWritableAudioFrameListener(userId, listener);
-            return rtc_set_remote_audio_received_listener(engine, userId, ref proxy);
+            return NativeIOS.rtc_set_remote_audio_received_listener(engine, userId, ref proxy);
         }
-
+    
         public override String GetSessionId()
         {
-            return rtc_get_session_rtc_id(engine);
+            return NativeIOS.rtc_get_session_rtc_id(engine);
         }
-
+    
         private rtc_engine_setup toEngineSetup(RCRTCEngineSetup setup)
         {
             rtc_engine_setup cobject;
@@ -481,6 +484,7 @@ namespace cn_rongcloud_rtc_unity
             {
                 rtc_audio_setup audio;
                 audio.audioCodecType = (int)setup.GetAudioSetup().GetAudioCodecType();
+                audio.mixOtherAppsAudio = setup.GetAudioSetup().IsMixOtherAppsAudio();
                 IntPtr ptr = Marshal.AllocHGlobal(Marshal.SizeOf(audio));
                 Marshal.StructureToPtr(audio, ptr, true);
                 cobject.audioSetup = ptr;
@@ -489,7 +493,7 @@ namespace cn_rongcloud_rtc_unity
             {
                 cobject.audioSetup = IntPtr.Zero;
             }
-
+    
             if (setup.GetVideoSetup() != null)
             {
                 rtc_video_setup video;
@@ -502,26 +506,35 @@ namespace cn_rongcloud_rtc_unity
             {
                 cobject.videoSetup = IntPtr.Zero;
             }
-
+            if (setup.GetMediaUrl() != null)
+            {
+                cobject.mediaUrl = setup.GetMediaUrl();
+            }
+            else
+            {
+                cobject.mediaUrl = "";
+            }
             return cobject;
         }
-
+    
         private rtc_room_setup toRoomSetup(RCRTCRoomSetup setup)
         {
             rtc_room_setup cobject;
             cobject.role = (int)setup.GetRole();
-            cobject.type = (int)setup.GetMediaType();
+            cobject.mediaType = (int)setup.GetMediaType();
+            cobject.joinType = (int)setup.GetJoinType();
             return cobject;
         }
-
+    
         private rtc_audio_config toAudioConfig(RCRTCAudioConfig config)
         {
             rtc_audio_config cobject;
             cobject.quality = (int)config.GetQuality();
             cobject.scenario = (int)config.GetScenario();
+            cobject.recordingVolume = config.GetRecordingVolume();
             return cobject;
         }
-
+    
         private rtc_video_config toVideoConfig(RCRTCVideoConfig config)
         {
             rtc_video_config cobject;
@@ -531,8 +544,8 @@ namespace cn_rongcloud_rtc_unity
             cobject.resolution = (int)config.GetResolution();
             return cobject;
         }
-
-        private rtc_custom_layout toCustomLayout(RCRTCCustomLayout layout) 
+    
+        private rtc_custom_layout toCustomLayout(RCRTCCustomLayout layout)
         {
             rtc_custom_layout cobject;
             cobject.type = layout.GetTag() != null ? -1 : 0;
@@ -544,7 +557,7 @@ namespace cn_rongcloud_rtc_unity
             cobject.height = layout.GetHeight();
             return cobject;
         }
-
+    
         private rtc_stats_listener_proxy toStatsListenerProxy(RCRTCStatsListener listener)
         {
             StatsListener = listener;
@@ -557,497 +570,36 @@ namespace cn_rongcloud_rtc_unity
             proxy.onRemoteVideoStats = on_rtc_remote_video_stats;
             proxy.onLiveMixAudioStats = on_rtc_live_mix_audio_stats;
             proxy.onLiveMixVideoStats = on_rtc_live_mix_video_stats;
+            proxy.onLiveMixMemberAudioStats = on_rtc_live_mix_member_audio_stats;
+            proxy.OnLiveMixMemberCustomAudioStats = on_rtc_live_mix_member_custom_audio_stats;
             return proxy;
         }
-
-        private rtc_writable_audio_frame_listener_proxy toWritableAudioFrameListener(String userId, RCRTCOnWritableAudioFrameListener listener)
+    
+        private rtc_writable_audio_frame_listener_proxy toWritableAudioFrameListener(
+            String userId, RCRTCOnWritableAudioFrameListener listener)
         {
             rtc_writable_audio_frame_listener_proxy proxy;
             proxy.remove = listener == null;
-            if (proxy.remove) 
+            if (proxy.remove)
             {
                 AudioListeners.Remove(userId);
-            } 
-            else 
+            }
+            else
             {
                 AudioListeners.Add(userId, listener);
             }
             proxy.onAudioFrame = on_rtc_audio_frame;
             return proxy;
         }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-        private struct rtc_audio_setup
-        {
-            public int audioCodecType;
-        }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-        private struct rtc_video_setup
-        {
-            [MarshalAs(UnmanagedType.U1)] public bool enableTinyStream;
-        }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-        private struct rtc_engine_setup
-        {
-            [MarshalAs(UnmanagedType.U1)] public bool reconnectable;
-
-            public int statsReportInterval;
-
-            [MarshalAs(UnmanagedType.U1)] public bool enableSRTP;
-            public IntPtr audioSetup;
-            public IntPtr videoSetup;
-        }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-        private struct rtc_room_setup
-        {
-            public int role;
-            public int type;
-        }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-        private struct rtc_audio_config
-        {
-            public int quality;
-            public int scenario;
-        }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-        private struct rtc_video_config
-        {
-            public int minBitrate;
-            public int maxBitrate;
-            public int fps;
-            public int resolution;
-        }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-        private struct rtc_custom_layout 
-        {
-            public int type;
-            public string id;
-            public string tag;
-            public int x;
-            public int y;
-            public int width;
-            public int height;
-        }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-        private struct rtc_stats_listener_proxy
-        {
-            [MarshalAs(UnmanagedType.U1)] public bool remove;
-            public OnNetworkStats onNetworkStats;
-            public OnLocalAudioStats onLocalAudioStats;
-            public OnLocalVideoStats onLocalVideoStats;
-            public OnRemoteAudioStats onRemoteAudioStats;
-            public OnRemoteVideoStats onRemoteVideoStats;
-            public OnLiveMixAudioStats onLiveMixAudioStats;
-            public OnLiveMixVideoStats onLiveMixVideoStats;
-        }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-        private struct rtc_network_stats
-        {
-            public int type;
-            public string ip;
-            public int sendBitrate;
-            public int receiveBitrate;
-            public int rtt;
-        }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-        private struct rtc_local_audio_stats
-        {
-            public int codec;
-            public int bitrate;
-            public int volume;
-            public double packageLostRate;
-            public int rtt;
-        }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-        private struct rtc_local_video_stats
-        {
-            [MarshalAs(UnmanagedType.U1)] public bool tiny;
-            public int codec;
-            public int bitrate;
-            public int fps;
-            public int width;
-            public int height;
-            public double packageLostRate;
-            public int rtt;
-        }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-        private struct rtc_remote_audio_stats
-        {
-            public int codec;
-            public int bitrate;
-            public int volume;
-            public double packageLostRate;
-            public int rtt;
-        }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-        private struct rtc_remote_video_stats
-        {
-            public int codec;
-            public int bitrate;
-            public int fps;
-            public int width;
-            public int height;
-            public double packageLostRate;
-            public int rtt;
-        }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-        private struct rtc_writable_audio_frame_listener_proxy
-        {
-            [MarshalAs(UnmanagedType.U1)] public bool remove;
-            public OnAudioFrame onAudioFrame;
-        }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-        private struct rtc_audio_frame
-        {
-            public IntPtr data;
-            public int length;
-            public int channels;
-            public int sampleRate;
-            public int bytesPerSample;
-            public int samples;
-        }
-        
-        delegate void OnNetworkStats(ref rtc_network_stats cstats);
-
-        delegate void OnLocalAudioStats(ref rtc_local_audio_stats cstats);
-
-        delegate void OnLocalVideoStats(ref rtc_local_video_stats cstats);
-
-        delegate void OnRemoteAudioStats(string userId, ref rtc_remote_audio_stats cstats);
-
-        delegate void OnRemoteVideoStats(string userId, ref rtc_remote_video_stats cstats);
-
-        delegate void OnLiveMixAudioStats(ref rtc_remote_audio_stats cstats);
-
-        delegate void OnLiveMixVideoStats(ref rtc_remote_video_stats cstats);
-
-        delegate void OnAudioFrame(String userId, ref rtc_audio_frame cframe);
-
-        [MonoPInvokeCallback(typeof(OnNetworkStats))]
-        static void on_rtc_network_stats(ref rtc_network_stats cstats)
-        {
-            RCRTCNetworkStats stats = new RCRTCNetworkStats((RCRTCNetworkType)cstats.type, cstats.ip,
-                cstats.sendBitrate, cstats.receiveBitrate, cstats.rtt);
-            StatsListener?.OnNetworkStats(stats);
-        }
-
-        [MonoPInvokeCallback(typeof(OnLocalAudioStats))]
-        static void on_rtc_local_audio_stats(ref rtc_local_audio_stats cstats)
-        {
-            RCRTCLocalAudioStats stats = new RCRTCLocalAudioStats((RCRTCAudioCodecType)cstats.codec, cstats.bitrate,
-                cstats.volume, cstats.packageLostRate, cstats.rtt);
-            StatsListener?.OnLocalAudioStats(stats);
-        }
-
-        [MonoPInvokeCallback(typeof(OnLocalVideoStats))]
-        static void on_rtc_local_video_stats(ref rtc_local_video_stats cstats)
-        {
-            RCRTCLocalVideoStats stats = new RCRTCLocalVideoStats(cstats.tiny, (RCRTCVideoCodecType)cstats.codec, cstats.bitrate,
-                cstats.fps, cstats.width, cstats.height, cstats.packageLostRate, cstats.rtt);
-            StatsListener?.OnLocalVideoStats(stats);
-        }
-
-        [MonoPInvokeCallback(typeof(OnRemoteAudioStats))]
-        static void on_rtc_remote_audio_stats(string userId, ref rtc_remote_audio_stats cstats)
-        {
-            RCRTCRemoteAudioStats stats = new RCRTCRemoteAudioStats((RCRTCAudioCodecType)cstats.codec, cstats.bitrate,
-                cstats.volume, cstats.packageLostRate, cstats.rtt);
-            StatsListener?.OnRemoteAudioStats(userId, stats);
-        }
-
-        [MonoPInvokeCallback(typeof(OnRemoteVideoStats))]
-        static void on_rtc_remote_video_stats(string userId, ref rtc_remote_video_stats cstats)
-        {
-            RCRTCRemoteVideoStats stats = new RCRTCRemoteVideoStats((RCRTCVideoCodecType)cstats.codec, cstats.bitrate,
-                cstats.fps, cstats.width, cstats.height, cstats.packageLostRate, cstats.rtt);
-            StatsListener?.OnRemoteVideoStats(userId, stats);
-        }
-
-        [MonoPInvokeCallback(typeof(OnLiveMixAudioStats))]
-        static void on_rtc_live_mix_audio_stats(ref rtc_remote_audio_stats cstats)
-        {
-            RCRTCRemoteAudioStats stats = new RCRTCRemoteAudioStats((RCRTCAudioCodecType)cstats.codec, cstats.bitrate,
-                cstats.volume, cstats.packageLostRate, cstats.rtt);
-            StatsListener?.OnLiveMixAudioStats(stats);
-        }
-
-        [MonoPInvokeCallback(typeof(OnLiveMixVideoStats))]
-        static void on_rtc_live_mix_video_stats(ref rtc_remote_video_stats cstats)
-        {
-            RCRTCRemoteVideoStats stats = new RCRTCRemoteVideoStats((RCRTCVideoCodecType)cstats.codec, cstats.bitrate,
-                cstats.fps, cstats.width, cstats.height, cstats.packageLostRate, cstats.rtt);
-            StatsListener?.OnLiveMixVideoStats(stats);
-        }
-
-        [MonoPInvokeCallback(typeof(OnAudioFrame))]
-        static void on_rtc_audio_frame(string id, ref rtc_audio_frame cframe)
-        {
-            byte[] data = new byte[cframe.length];
-            Marshal.Copy(cframe.data, data, 0, cframe.length);
-            RCRTCAudioFrame frame = new RCRTCAudioFrame(data, cframe.length, cframe.channels, cframe.sampleRate,
-                cframe.bytesPerSample, cframe.samples);
-            data = AudioListeners[id]?.OnAudioFrame(ref frame);
-            Marshal.Copy(data, 0, cframe.data, data.Length);
-        }
-
-        [MonoPInvokeCallback(typeof(OnErrorDelegate))]
-        static void on_rtc_error(int code, string message)
-        {
-            Instance?.OnError?.Invoke(code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnKickedDelegate))]
-        static void on_rtc_kicked(string roomId, string message)
-        {
-            Instance?.OnKicked?.Invoke(roomId, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnRoomJoinedDelegate))]
-        static void on_rtc_room_joined(int code, string message)
-        {
-            Debug.Log("on_rtc_room_joined code = " + code + ", message = " + message);
-            Instance?.OnRoomJoined?.Invoke(code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnRoomLeftDelegate))]
-        static void on_rtc_room_left(int code, string message)
-        {
-            Instance?.OnRoomLeft?.Invoke(code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnPublishedDelegate))]
-        static void on_rtc_published(RCRTCMediaType type, int code, string message)
-        {
-            Instance?.OnPublished?.Invoke(type, code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnUnpublishedDelegate))]
-        static void on_rtc_unpublished(RCRTCMediaType type, int code, string message)
-        {
-            Instance?.OnUnpublished?.Invoke(type, code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnSubscribedDelegate))]
-        static void on_rtc_subscribed(string id, RCRTCMediaType type, int code, string message)
-        {
-            Instance?.OnSubscribed?.Invoke(id, type, code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnUnsubscribedDelegate))]
-        static void on_rtc_unsubscribed(string id, RCRTCMediaType type, int code, string message)
-        {
-            Instance?.OnUnsubscribed?.Invoke(id, type, code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnLiveMixSubscribedDelegate))]
-        static void on_rtc_live_mix_subscribed(RCRTCMediaType type, int code, string message)
-        {
-            Instance?.OnLiveMixSubscribed?.Invoke(type, code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnLiveMixUnsubscribedDelegate))]
-        static void on_rtc_live_mix_unsubscribed(RCRTCMediaType type, int code, string message)
-        {
-            Instance?.OnLiveMixUnsubscribed?.Invoke(type, code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnCameraEnabledDelegate))]
-        static void on_rtc_enable_camera(bool enable, int code, string message)
-        {
-            Instance?.OnCameraEnabled?.Invoke(enable, code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnCameraSwitchedDelegate))]
-        static void on_rtc_switch_camera(RCRTCCamera camera, int code, string message)
-        {
-            Instance?.OnCameraSwitched?.Invoke(camera, code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnLiveCdnAddedDelegate))]
-        static void on_rtc_live_cdn_added(string url, int code, string message)
-        {
-            Instance?.OnLiveCdnAdded?.Invoke(url, code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnLiveCdnRemovedDelegate))]
-        static void on_rtc_live_cdn_removed(string url, int code, string message)
-        {
-            Instance?.OnLiveCdnRemoved?.Invoke(url, code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnLiveMixLayoutModeSetDelegate))]
-        static void on_rtc_live_mix_layout_mode_set(int code, string message)
-        {
-            Instance?.OnLiveMixLayoutModeSet?.Invoke(code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnLiveMixRenderModeSetDelegate))]
-        static void on_rtc_live_mix_render_mode_set(int code, string message)
-        {
-            Instance?.OnLiveMixRenderModeSet?.Invoke(code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnLiveMixCustomLayoutsSetDelegate))]
-        static void on_rtc_live_mix_custom_layouts_set(int code, string message)
-        {
-            Instance?.OnLiveMixCustomLayoutsSet?.Invoke(code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnLiveMixCustomAudiosSetDelegate))]
-        static void on_rtc_live_mix_custom_audios_set(int code, string message)
-        {
-            Instance?.OnLiveMixCustomAudiosSet?.Invoke(code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnLiveMixVideoBitrateSetDelegate))]
-        static void on_rtc_live_mix_video_bitrate_set(bool tiny, int code, string message)
-        {
-            Instance?.OnLiveMixVideoBitrateSet?.Invoke(tiny, code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnLiveMixVideoResolutionSetDelegate))]
-        static void on_rtc_live_mix_video_resolution_set(bool tiny, int code, string message)
-        {
-            Instance?.OnLiveMixVideoResolutionSet?.Invoke(tiny, code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnLiveMixVideoFpsSetDelegate))]
-        static void on_rtc_live_mix_video_fps_set(bool tiny, int code, string message)
-        {
-            Instance?.OnLiveMixVideoFpsSet?.Invoke(tiny, code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnLiveMixAudioBitrateSetDelegate))]
-        static void on_rtc_live_mix_audio_bitrate_set(int code, string message)
-        {
-            Instance?.OnLiveMixAudioBitrateSet?.Invoke(code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnAudioEffectCreatedDelegate))]
-        static void on_rtc_audio_effect_created(int id, int code, string message)
-        {
-            Instance?.OnAudioEffectCreated?.Invoke(id, code, message);
-        }
-
-        [MonoPInvokeCallback(typeof(OnAudioEffectFinishedDelegate))]
-        static void on_rtc_audio_effect_finished(int id)
-        {
-            Instance?.OnAudioEffectFinished?.Invoke(id);
-        }
-
-        [MonoPInvokeCallback(typeof(OnAudioMixingStartedDelegate))]
-        static void on_rtc_audio_mixing_started()
-        {
-            Instance?.OnAudioMixingStarted?.Invoke();
-        }
-
-        [MonoPInvokeCallback(typeof(OnAudioMixingPausedDelegate))]
-        static void on_rtc_audio_mixing_paused()
-        {
-            Instance?.OnAudioMixingPaused?.Invoke();
-        }
-
-        [MonoPInvokeCallback(typeof(OnAudioMixingStoppedDelegate))]
-        static void on_rtc_audio_mixing_stopped()
-        {
-            Instance?.OnAudioMixingStopped?.Invoke();
-        }
-
-        [MonoPInvokeCallback(typeof(OnAudioMixingFinishedDelegate))]
-        static void on_rtc_audio_mixing_finished()
-        {
-            Instance?.OnAudioMixingFinished?.Invoke();
-        }
-
-        [MonoPInvokeCallback(typeof(OnUserJoinedDelegate))]
-        static void on_rtc_user_joined(string id)
-        {
-            Instance?.OnUserJoined?.Invoke(id);
-        }
-
-        [MonoPInvokeCallback(typeof(OnUserOfflineDelegate))]
-        static void on_rtc_user_offline(string id)
-        {
-            Instance?.OnUserOffline?.Invoke(id);
-        }
-
-        [MonoPInvokeCallback(typeof(OnUserLeftDelegate))]
-        static void on_rtc_user_left(string id)
-        {
-            Instance?.OnUserLeft?.Invoke(id);
-        }
-
-        [MonoPInvokeCallback(typeof(OnRemotePublishedDelegate))]
-        static void on_rtc_remote_published(string id, RCRTCMediaType type)
-        {
-            Instance?.OnRemotePublished?.Invoke(id, type);
-        }
-
-        [MonoPInvokeCallback(typeof(OnRemoteUnpublishedDelegate))]
-        static void on_rtc_remote_unpublished(string id, RCRTCMediaType type)
-        {
-            Instance?.OnRemoteUnpublished?.Invoke(id, type);
-        }
-
-        [MonoPInvokeCallback(typeof(OnRemoteLiveMixPublishedDelegate))]
-        static void on_rtc_remote_live_mix_published(RCRTCMediaType type)
-        {
-            Instance?.OnRemoteLiveMixPublished?.Invoke(type);
-        }
-
-        [MonoPInvokeCallback(typeof(OnRemoteLiveMixUnpublishedDelegate))]
-        static void on_rtc_remote_live_mix_unpublished(RCRTCMediaType type)
-        {
-            Instance?.OnRemoteLiveMixUnpublished?.Invoke(type);
-        }
-
-        [MonoPInvokeCallback(typeof(OnRemoteStateChangedDelegate))]
-        static void on_rtc_remote_state_changed(string id, RCRTCMediaType type, bool disabled)
-        {
-            Instance?.OnRemoteStateChanged?.Invoke(id, type, disabled);
-        }
-
-        [MonoPInvokeCallback(typeof(OnRemoteFirstFrameDelegate))]
-        static void on_rtc_remote_first_frame(string id, RCRTCMediaType type)
-        {
-            Instance?.OnRemoteFirstFrame?.Invoke(id, type);
-        }
-
-        [MonoPInvokeCallback(typeof(OnRemoteLiveMixFirstFrameDelegate))]
-        static void on_rtc_remote_live_mix_first_frame(RCRTCMediaType type)
-        {
-            Instance?.OnRemoteLiveMixFirstFrame?.Invoke(type);
-        }
-
+    
         [DllImport("__Internal", CharSet = CharSet.Ansi)]
         private static extern void rtc_set_engine_listeners(
-            OnErrorDelegate on_rtc_error,
-            OnKickedDelegate on_rtc_kicked,
-            OnRoomJoinedDelegate on_rtc_room_joined,
-            OnRoomLeftDelegate on_rtc_room_left,
-            OnPublishedDelegate on_rtc_published,
-            OnUnpublishedDelegate on_rtc_unpublished,
-            OnSubscribedDelegate on_rtc_subscribed,
-            OnUnsubscribedDelegate on_rtc_unsubscribed,
-            OnLiveMixSubscribedDelegate on_rtc_live_mix_subscribed,
-            OnLiveMixUnsubscribedDelegate on_rtc_live_mix_unsubscribed,
-            OnCameraEnabledDelegate on_rtc_enable_camera,
-            OnCameraSwitchedDelegate on_rtc_switch_camera,
-            OnLiveCdnAddedDelegate on_rtc_live_cdn_added,
+            OnErrorDelegate on_rtc_error, OnKickedDelegate on_rtc_kicked, OnRoomJoinedDelegate on_rtc_room_joined,
+            OnRoomLeftDelegate on_rtc_room_left, OnPublishedDelegate on_rtc_published,
+            OnUnpublishedDelegate on_rtc_unpublished, OnSubscribedDelegate on_rtc_subscribed,
+            OnUnsubscribedDelegate on_rtc_unsubscribed, OnLiveMixSubscribedDelegate on_rtc_live_mix_subscribed,
+            OnLiveMixUnsubscribedDelegate on_rtc_live_mix_unsubscribed, OnCameraEnabledDelegate on_rtc_enable_camera,
+            OnCameraSwitchedDelegate on_rtc_switch_camera, OnLiveCdnAddedDelegate on_rtc_live_cdn_added,
             OnLiveCdnRemovedDelegate on_rtc_live_cdn_removed,
             OnLiveMixLayoutModeSetDelegate on_rtc_live_mix_layout_mode_set,
             OnLiveMixRenderModeSetDelegate on_rtc_live_mix_render_mode_set,
@@ -1062,246 +614,230 @@ namespace cn_rongcloud_rtc_unity
             OnAudioMixingStartedDelegate on_rtc_audio_mixing_started,
             OnAudioMixingPausedDelegate on_rtc_audio_mixing_paused,
             OnAudioMixingStoppedDelegate on_rtc_audio_mixing_stopped,
-            OnAudioMixingFinishedDelegate on_rtc_audio_mixing_finished,
-            OnUserJoinedDelegate on_rtc_user_joined,
-            OnUserOfflineDelegate on_rtc_user_offline,
-            OnUserLeftDelegate on_rtc_user_left,
-            OnRemotePublishedDelegate on_rtc_remote_published,
-            OnRemoteUnpublishedDelegate on_rtc_remote_unpublished,
+            OnAudioMixingFinishedDelegate on_rtc_audio_mixing_finished, OnUserJoinedDelegate on_rtc_user_joined,
+            OnUserOfflineDelegate on_rtc_user_offline, OnUserLeftDelegate on_rtc_user_left,
+            OnRemotePublishedDelegate on_rtc_remote_published, OnRemoteUnpublishedDelegate on_rtc_remote_unpublished,
             OnRemoteLiveMixPublishedDelegate on_rtc_remote_live_mix_published,
             OnRemoteLiveMixUnpublishedDelegate on_rtc_remote_live_mix_unpublished,
-            OnRemoteStateChangedDelegate on_rtc_remote_state_changed,
-            OnRemoteFirstFrameDelegate on_rtc_remote_first_frame,
-            OnRemoteLiveMixFirstFrameDelegate on_rtc_remote_live_mix_first_frame
-            );
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern IntPtr rtc_create_engine();
-
-        [DllImport("__Internal", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        private static extern IntPtr rtc_create_engine_with_setup(ref rtc_engine_setup setup);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern void rtc_release_engine(IntPtr engine);
-
-        [DllImport("__Internal", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        private static extern int rtc_join_room(IntPtr engine, string id, ref rtc_room_setup config);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_leave_room(IntPtr engine);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_publish(IntPtr engine, int type);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_unpublish(IntPtr engine, int type);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_subscribe(IntPtr engine, string id, int type, bool tiny);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_subscribe_with_user_ids(IntPtr engine, string[] ids, int count, int type, bool tiny);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_subscribe_live_mix(IntPtr engine, int type, bool tiny);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_unsubscribe(IntPtr engine, string id, int type);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_unsubscribe_with_user_ids(IntPtr engine, string[] ids, int count, int type);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_unsubscribe_live_mix(IntPtr engine, int type);
-
-        [DllImport("__Internal", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_audio_config(IntPtr engine, ref rtc_audio_config config);
-
-        [DllImport("__Internal", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_video_config(IntPtr engine, ref rtc_video_config config, bool tiny);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_enable_microphone(IntPtr engine, bool enable);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_enable_speaker(IntPtr engine, bool enable);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_adjust_local_volume(IntPtr engine, int volume);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_enable_camera(IntPtr engine, bool enable, int camera);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_switch_camera(IntPtr engine);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_which_camera(IntPtr engine);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern bool rtc_is_camera_focus_supported(IntPtr engine);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern bool rtc_is_camera_exposure_position_supported(IntPtr engine);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_camera_focus_position_in_preview(IntPtr engine, double x, double y);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_camera_exposure_position_in_preview(IntPtr engine, double x, double y);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_camera_capture_orientation(IntPtr engine, int orientation);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_mute_local_stream(IntPtr engine, int type, bool mute);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_mute_remote_stream(IntPtr engine, string id, int type, bool mute);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_mute_all_remote_audio_streams(IntPtr engine, bool mute);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_local_view(IntPtr engine, IntPtr view);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_remove_local_view(IntPtr engine);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_remote_view(IntPtr engine, string id, IntPtr view);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_remove_remote_view(IntPtr engine, string id);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_live_mix_view(IntPtr engine, IntPtr view);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_remove_live_mix_view(IntPtr engine);
-        
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_add_live_cdn(IntPtr engine, string url);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_remove_live_cdn(IntPtr engine, string url);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_live_mix_layout_mode(IntPtr engine, int mode);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_live_mix_render_mode(IntPtr engine, int mode);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_live_mix_custom_layouts(IntPtr engine, ref rtc_custom_layout[] layouts, int count);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_live_mix_custom_audios(IntPtr engine, string[] ids, int count);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_live_mix_video_bitrate(IntPtr engine, int bitrate, bool tiny);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_live_mix_video_resolution(IntPtr engine, int width, int height, bool tiny);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_live_mix_video_fps(IntPtr engine, int fps, bool tiny);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_live_mix_audio_bitrate(IntPtr engine, int bitrate);
-
-        [DllImport("__Internal", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_stats_listener(IntPtr engine, ref rtc_stats_listener_proxy proxy);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_create_audio_effect(IntPtr engine, string path, int id);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_release_audio_effect(IntPtr engine, int id);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_play_audio_effect(IntPtr engine, int id, int volume, int loop);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_pause_audio_effect(IntPtr engine, int id);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_pause_all_audio_effects(IntPtr engine);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_resume_audio_effect(IntPtr engine, int id);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_resume_all_audio_effects(IntPtr engine);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_stop_audio_effect(IntPtr engine, int id);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_stop_all_audio_effects(IntPtr engine);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_adjust_audio_effect_volume(IntPtr engine, int id, int volume);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_get_audio_effect_volume(IntPtr engine, int id);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_adjust_all_audio_effects_volume(IntPtr engine, int volume);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_start_audio_mixing(IntPtr engine, string path, int mode, bool playback, int loop);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_stop_audio_mixing(IntPtr engine);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_pause_audio_mixing(IntPtr engine);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_resume_audio_mixing(IntPtr engine);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_adjust_audio_mixing_volume(IntPtr engine, int volume);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_adjust_audio_mixing_playback_volume(IntPtr engine, int volume);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_adjust_audio_mixing_publish_volume(IntPtr engine, int volume);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_get_audio_mixing_playback_volume(IntPtr engine);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_get_audio_mixing_publish_volume(IntPtr engine);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_audio_mixing_position(IntPtr engine, double position);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern double rtc_get_audio_mixing_position(IntPtr engine);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern int rtc_get_audio_mixing_duration(IntPtr engine);
-
-        [DllImport("__Internal", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_local_audio_captured_listener(IntPtr engine, ref rtc_writable_audio_frame_listener_proxy proxy);
-
-        [DllImport("__Internal", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        private static extern int rtc_set_remote_audio_received_listener(IntPtr engine, string id, ref rtc_writable_audio_frame_listener_proxy proxy);
-
-        [DllImport("__Internal", CharSet = CharSet.Ansi)]
-        private static extern string rtc_get_session_rtc_id(IntPtr engine);
-
+            OnRemoteStateChangedDelegate on_rtc_remote_state_changed, OnRemoteFirstFrameDelegate on_rtc_remote_first_frame,
+            OnRemoteLiveMixFirstFrameDelegate on_rtc_remote_live_mix_first_frame);
+    
+        public override int StartNetworkProbe(RCRTCNetworkProbeListener listener)
+        {
+            ios_network_probe_proxy proxy = toIOSNetworkProbeProxy(listener);
+            return NativeIOS.rtc_start_network_Probe(ref proxy);
+        }
+    
+        public override int SetWatermark(string path, double x, double y, double zoom)
+        {
+            return NativeIOS.rtc_set_watermark(path, x, y, zoom);
+        }
+    
+        public override int CreateCustomStreamFromFile(string path, string tag, bool replace, bool playback)
+        {
+            return NativeIOS.rtc_create_custom_stream_from_file(path, tag, replace, playback);
+        }
+    
+        public override int SetCustomStreamVideoConfig(string tag, RCRTCVideoConfig config)
+        {
+            rtc_video_config cobject = toVideoConfig(config);
+            return NativeIOS.rtc_set_custom_stream_video_config(tag, ref cobject);
+        }
+    
+        public override int MuteLiveMixStream(RCRTCMediaType type, bool mute)
+        {
+            RCUnityLogger.getInstance().log("MuteLiveMixStream", $"type={type},mute={mute}");
+            return NativeIOS.rtc_mute_live_mix_stream(type, mute);
+        }
+    
+        public override int SetLiveMixBackgroundColor(int color)
+        {
+            RCUnityLogger.getInstance().log("SetLiveMixBackgroundColor", $"color={color}");
+            return NativeIOS.rtc_set_live_mix_background_color(color);
+        }
+    
+        public override int MuteLocalCustomStream(string tag, bool mute)
+        {
+            RCUnityLogger.getInstance().log("MuteLocalCustomStream", $"tag={tag},mute={mute}");
+            return NativeIOS.rtc_mute_local_custom_stream(tag, mute);
+        }
+    
+        public override int RemoveLocalCustomStreamView(string tag)
+        {
+            RCUnityLogger.getInstance().log("RemoveLocalCustomStreamView", $"tag={tag}");
+            return NativeIOS.rtc_remove_local_custom_stream_view(tag);
+        }
+    
+        public override int PublishCustomStream(string tag)
+        {
+            RCUnityLogger.getInstance().log("PublishCustomStream", $"tag={tag}");
+            return NativeIOS.rtc_publish_custom_stream(tag);
+        }
+    
+        public override int UnpublishCustomStream(string tag)
+        {
+            RCUnityLogger.getInstance().log("UnpublishCustomStream", $"tag={tag}");
+            return NativeIOS.rtc_unpublish_custom_stream(tag);
+        }
+    
+        public override int MuteRemoteCustomStream(string userId, string tag, RCRTCMediaType type, bool mute)
+        {
+            RCUnityLogger.getInstance().log("MuteRemoteCustomStream", $"userId={userId},tag={tag},type={type},mute={mute}");
+            return NativeIOS.rtc_mute_remote_custom_stream(userId, tag, type, mute);
+        }
+    
+        public override int RemoveRemoteCustomStreamView(string userId, string tag)
+        {
+            RCUnityLogger.getInstance().log("RemoveRemoteCustomStreamView", $"userId={userId},tag={tag}");
+            return NativeIOS.rtc_remove_remote_custom_stream_view(userId, tag);
+        }
+    
+        public override int SubscribeCustomStream(string userId, string tag, RCRTCMediaType type, bool tiny)
+        {
+            RCUnityLogger.getInstance().log("SubscribeCustomStream", $"userId={userId},tag={tag},type={type},tiny={tiny}");
+            return NativeIOS.rtc_subscribe_custom_stream(userId, tag, type, tiny);
+        }
+    
+        public override int UnsubscribeCustomStream(string userId, string tag, RCRTCMediaType type)
+        {
+            RCUnityLogger.getInstance().log("UnsubscribeCustomStream", $"userId={userId},tag={tag},type={type}");
+            return NativeIOS.rtc_unsubscribe_custom_stream(userId, tag, type);
+        }
+    
+        public override int RequestJoinSubRoom(string roomId, string userId, bool autoLayout, string extra)
+        {
+            RCUnityLogger.getInstance().log("RequestJoinSubRoom",
+                                            $"roomId={roomId},userId={userId},autoLayout={autoLayout},extra={extra}");
+            return NativeIOS.rtc_request_join_sub_room(roomId, userId, autoLayout, extra);
+        }
+    
+        public override int CancelJoinSubRoomRequest(string roomId, string userId, string extra)
+        {
+            RCUnityLogger.getInstance().log("CancelJoinSubRoomRequest", $"roomId={roomId},userId={userId},extra={extra}");
+            return NativeIOS.rtc_cancel_join_sub_room_request(roomId, userId, extra);
+        }
+    
+        public override int ResponseJoinSubRoomRequest(string roomId, string userId, bool agree, bool autoLayout,
+                                                       string extra)
+        {
+            RCUnityLogger.getInstance().log(
+                "ResponseJoinSubRoomRequest",
+                $"roomId={roomId},userId={userId},agree={agree},autoLayout={autoLayout},extra={extra}");
+            return NativeIOS.rtc_response_join_sub_room_request(roomId, userId, agree, autoLayout, extra);
+        }
+    
+        public override int JoinSubRoom(string roomId)
+        {
+            RCUnityLogger.getInstance().log("JoinSubRoom", $"roomId={roomId}");
+            return NativeIOS.rtc_join_sub_room(roomId);
+        }
+    
+        public override int LeaveSubRoom(string roomId, bool disband)
+        {
+            RCUnityLogger.getInstance().log("LeaveSubRoom", $"roomId={roomId},disband={disband}");
+            return NativeIOS.rtc_leave_sub_room(roomId, disband);
+        }
+    
+        public override int SwitchLiveRole(RCRTCRole role)
+        {
+            RCUnityLogger.getInstance().log("SwitchLiveRole", $"role={role}");
+            return NativeIOS.rtc_switch_live_role(role);
+        }
+    
+        public override int EnableLiveMixInnerCdnStream(bool enable)
+        {
+            RCUnityLogger.getInstance().log("EnableLiveMixInnerCdnStream", $"enable={enable}");
+            return NativeIOS.rtc_enable_live_mix_inner_cdn_stream(enable);
+        }
+    
+        public override int SubscribeLiveMixInnerCdnStream()
+        {
+            RCUnityLogger.getInstance().log("SubscribeLiveMixInnerCdnStream", $"");
+            return NativeIOS.rtc_subscribe_live_mix_inner_cdn_stream();
+        }
+    
+        public override int UnsubscribeLiveMixInnerCdnStream()
+        {
+            RCUnityLogger.getInstance().log("UnsubscribeLiveMixInnerCdnStream", $"");
+            return NativeIOS.rtc_unsubscribe_live_mix_inner_cdn_stream();
+        }
+    
+        public override int RemoveLiveMixInnerCdnStreamView()
+        {
+            RCUnityLogger.getInstance().log("RemoveLiveMixInnerCdnStreamView", $"");
+            return NativeIOS.rtc_remove_live_mix_inner_cdn_stream_view();
+        }
+    
+        public override int SetLocalLiveMixInnerCdnVideoResolution(int width, int height)
+        {
+            RCUnityLogger.getInstance().log("SetLocalLiveMixInnerCdnVideoResolution", $"width={width},height={height}");
+            return NativeIOS.rtc_set_local_live_mix_inner_cdn_video_resolution(width, height);
+        }
+    
+        public override int SetLocalLiveMixInnerCdnVideoFps(RCRTCVideoFps fps)
+        {
+            RCUnityLogger.getInstance().log("SetLocalLiveMixInnerCdnVideoFps", $"fps={fps}");
+            return NativeIOS.rtc_set_local_live_mix_inner_cdn_video_fps(fps);
+        }
+    
+        public override int MuteLiveMixInnerCdnStream(bool mute)
+        {
+            RCUnityLogger.getInstance().log("MuteLiveMixInnerCdnStream", $"mute={mute}");
+            return NativeIOS.rtc_mute_live_mix_inner_cdn_stream(mute);
+        }
+    
+        public override int RemoveWatermark()
+        {
+            RCUnityLogger.getInstance().log("RemoveWatermark", $"");
+            return NativeIOS.rtc_remove_watermark();
+        }
+    
+        public override int StopNetworkProbe()
+        {
+            RCUnityLogger.getInstance().log("StopNetworkProbe", $"");
+            return NativeIOS.rtc_stop_network_probe();
+        }
+    
+        public override int StartEchoTest(int timeInterval)
+        {
+            RCUnityLogger.getInstance().log("StartEchoTest", $"timeInterval={timeInterval}");
+            return NativeIOS.rtc_start_echo_test(timeInterval);
+        }
+    
+        public override int StopEchoTest()
+        {
+            RCUnityLogger.getInstance().log("StopEchoTest", $"");
+            return NativeIOS.rtc_stop_echo_test();
+        }
+    
+        public override int EnableSei(bool enable)
+        {
+            RCUnityLogger.getInstance().log("EnableSei", $"enable={enable}");
+            return NativeIOS.rtc_enable_sei(enable);
+        }
+    
+        public override int SendSei(string sei)
+        {
+            RCUnityLogger.getInstance().log("SendSei", $"sei={sei}");
+            return NativeIOS.rtc_send_sei(sei);
+        }
+    
+        public override int PreconnectToMediaServer()
+        {
+            RCUnityLogger.getInstance().log("PreconnectToMediaServer", $"");
+            return NativeIOS.rtc_preconnect_to_media_server();
+        }
+    
         private IntPtr engine = IntPtr.Zero;
-
+    
         private static RCRTCEngineIOS Instance = null;
-
+    
         private static RCRTCStatsListener StatsListener = null;
-
+    
+        private static Dictionary<String, object> Listeners = new Dictionary<String, object>();
+    
         private static Dictionary<String, RCRTCOnWritableAudioFrameListener> AudioListeners = null;
     }
 }
-
+    
 #endif

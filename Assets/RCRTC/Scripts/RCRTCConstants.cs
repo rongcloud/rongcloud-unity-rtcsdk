@@ -134,67 +134,6 @@ namespace cn_rongcloud_rtc_unity
 #endif
 
     /// <summary>
-    /// 音视频类型
-    /// </summary>
-    public enum RCRTCMediaType
-    {
-        /// <summary>
-        /// 仅音频
-        /// </summary>
-        AUDIO = 0,
-        /// <summary>
-        /// 仅视频
-        /// </summary>
-        VIDEO,
-        /// <summary>
-        /// 音频 + 视频
-        /// </summary>
-        AUDIO_VIDEO,
-    }
-
-    /// <summary>
-    /// 角色类型
-    /// </summary>
-    public enum RCRTCRole
-    {
-        /// <summary>
-        /// 会议类型房间中用户
-        /// </summary>
-        MEETING_MEMBER = 0,
-        /// <summary>
-        /// 直播类型房间中主播
-        /// </summary>
-        LIVE_BROADCASTER,
-        /// <summary>
-        /// 直播类型房间中观众
-        /// </summary>
-        LIVE_AUDIENCE
-    }
-
-    /// <summary>
-    /// 视频帧率
-    /// </summary>
-    public enum RCRTCVideoFps
-    {
-        /// <summary>
-        /// 每秒 10 帧
-        /// </summary>
-        FPS_10 = 0,
-        /// <summary>
-        /// 每秒 15 帧
-        /// </summary>
-        FPS_15,
-        /// <summary>
-        /// 每秒 24 帧
-        /// </summary>
-        FPS_24,
-        /// <summary>
-        /// 每秒 30 帧
-        /// </summary>
-        FPS_30
-    }
-
-    /// <summary>
     /// 视频分辨率
     /// </summary>
     public enum RCRTCVideoResolution
@@ -354,6 +293,21 @@ namespace cn_rongcloud_rtc_unity
     {
         TEXTURE,
         NV21,
+    }
+
+    /// <summary>
+    /// 同一 UserID 多端加入房间处理类型
+    /// </summary>
+    public enum RCRTCJoinType
+    {
+        /// <summary>
+        /// 将之前加入房间的端踢出房间
+        /// </summary>
+        KICK = 0,
+        /// <summary>
+        /// 拒绝当前端加入房间
+        /// </summary>
+        REFUSE
     }
 
 }

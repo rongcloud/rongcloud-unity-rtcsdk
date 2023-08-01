@@ -163,6 +163,12 @@ namespace cn_rongcloud_rtc_unity
             Instance?.OnLiveCdnRemoved?.Invoke(url, code, message);
         }
 
+        [MonoPInvokeCallback(typeof(OnLiveMixBackgroundColorSetDelegate))]
+        private static void on_live_mix_background_color_set(int code, string errMsg)
+        {
+            Instance?.OnLiveMixBackgroundColorSet?.Invoke(code, errMsg);
+        }
+
         [MonoPInvokeCallback(typeof(OnLiveMixLayoutModeSetDelegate))]
         private static void on_rtc_live_mix_layout_mode_set(int code, string message)
         {
@@ -248,33 +254,33 @@ namespace cn_rongcloud_rtc_unity
         }
 
         [MonoPInvokeCallback(typeof(OnUserJoinedDelegate))]
-        private static void on_rtc_user_joined(string id)
+        private static void on_rtc_user_joined(string roomId, string userId)
         {
-            Instance?.OnUserJoined?.Invoke(id);
+            Instance?.OnUserJoined?.Invoke(roomId, userId);
         }
 
         [MonoPInvokeCallback(typeof(OnUserOfflineDelegate))]
-        private static void on_rtc_user_offline(string id)
+        private static void on_rtc_user_offline(string roomId, string userId)
         {
-            Instance?.OnUserOffline?.Invoke(id);
+            Instance?.OnUserOffline?.Invoke(roomId, userId);
         }
 
         [MonoPInvokeCallback(typeof(OnUserLeftDelegate))]
-        private static void on_rtc_user_left(string id)
+        private static void on_rtc_user_left(string roomId, string userId)
         {
-            Instance?.OnUserLeft?.Invoke(id);
+            Instance?.OnUserLeft?.Invoke(roomId, userId);
         }
 
         [MonoPInvokeCallback(typeof(OnRemotePublishedDelegate))]
-        private static void on_rtc_remote_published(string id, RCRTCMediaType type)
+        private static void on_rtc_remote_published(string roomId, string userId, RCRTCMediaType type)
         {
-            Instance?.OnRemotePublished?.Invoke(id, type);
+            Instance?.OnRemotePublished?.Invoke(roomId, userId, type);
         }
 
         [MonoPInvokeCallback(typeof(OnRemoteUnpublishedDelegate))]
-        private static void on_rtc_remote_unpublished(string id, RCRTCMediaType type)
+        private static void on_rtc_remote_unpublished(string roomId, string userId, RCRTCMediaType type)
         {
-            Instance?.OnRemoteUnpublished?.Invoke(id, type);
+            Instance?.OnRemoteUnpublished?.Invoke(roomId, userId, type);
         }
 
         [MonoPInvokeCallback(typeof(OnRemoteLiveMixPublishedDelegate))]
@@ -290,15 +296,15 @@ namespace cn_rongcloud_rtc_unity
         }
 
         [MonoPInvokeCallback(typeof(OnRemoteStateChangedDelegate))]
-        private static void on_rtc_remote_state_changed(string id, RCRTCMediaType type, bool disabled)
+        private static void on_rtc_remote_state_changed(string roomId, string userId, RCRTCMediaType type, bool disabled)
         {
-            Instance?.OnRemoteStateChanged?.Invoke(id, type, disabled);
+            Instance?.OnRemoteStateChanged?.Invoke(roomId, userId, type, disabled);
         }
 
         [MonoPInvokeCallback(typeof(OnRemoteFirstFrameDelegate))]
-        private static void on_rtc_remote_first_frame(string id, RCRTCMediaType type)
+        private static void on_rtc_remote_first_frame(string roomId, string userId, RCRTCMediaType type)
         {
-            Instance?.OnRemoteFirstFrame?.Invoke(id, type);
+            Instance?.OnRemoteFirstFrame?.Invoke(roomId, userId, type);
         }
 
         [MonoPInvokeCallback(typeof(OnRemoteLiveMixFirstFrameDelegate))]
@@ -348,14 +354,7 @@ namespace cn_rongcloud_rtc_unity
                 listener.OnVideoFrame(ref frame);
             }
         }
-
-        [MonoPInvokeCallback(typeof(OnVideoFrame))]
-        private static void on_rtc_live_mix_video_frame(string uid, ref rtc_video_frame cframe)
-        {
-            RCRTCVideoFrame frame = new RCRTCVideoFrame(cframe.data_y, cframe.data_u, cframe.data_v, cframe.length, cframe.stride_y, cframe.stride_u, cframe.stride_v, cframe.width, cframe.height);
-            LiveMixVideoFrameListener?.OnVideoFrame(ref frame);
-        }
-
+        
         [MonoPInvokeCallback(typeof(OnAudioFrame))]
         private static void on_rtc_audio_frame(string uid, ref rtc_audio_frame cframe)
         {
@@ -365,6 +364,80 @@ namespace cn_rongcloud_rtc_unity
                 cframe.bytesPerSample, cframe.samples);
             data = audio_frame_listeners[uid]?.OnAudioFrame(ref frame);
             Marshal.Copy(data, 0, cframe.data, data.Length);
+        }
+        #endregion
+
+        #region CustomStream
+        [MonoPInvokeCallback(typeof(OnCustomStreamPublishedDelegate))]
+        private static void on_custom_stream_published(string tag, int code, string errMsg)
+        {
+            Instance?.OnCustomStreamPublished?.Invoke(tag, code, errMsg);
+        }
+
+        [MonoPInvokeCallback(typeof(OnCustomStreamPublishFinishedDelegate))]
+        private static void on_custom_stream_publish_finished(string tag)
+        {
+            Instance?.OnCustomStreamPublishFinished?.Invoke(tag);
+        }
+
+        [MonoPInvokeCallback(typeof(OnCustomStreamUnpublishedDelegate))]
+        private static void on_custom_stream_unpublished(string tag, int code, string errMsg)
+        {
+            Instance?.OnCustomStreamUnpublished?.Invoke(tag, code, errMsg);
+        }
+
+        [MonoPInvokeCallback(typeof(OnRemoteCustomStreamPublishedDelegate))]
+        private static void on_remote_custom_stream_published(string roomId, string userId, string tag,
+                                                               RCRTCMediaType type)
+        {
+            Instance?.OnRemoteCustomStreamPublished?.Invoke(roomId, userId, tag, type);
+        }
+
+        [MonoPInvokeCallback(typeof(OnRemoteCustomStreamUnpublishedDelegate))]
+        private static void on_remote_custom_stream_unpublished(string roomId, string userId, string tag,
+                                                               RCRTCMediaType type)
+        {
+            Instance?.OnRemoteCustomStreamUnpublished?.Invoke(roomId, userId, tag, type);
+        }
+
+        [MonoPInvokeCallback(typeof(OnRemoteCustomStreamStateChangedDelegate))]
+        private static void on_remote_custom_stream_state_changed(string roomId, string userId, string tag,
+                                                                  RCRTCMediaType type, bool disabled)
+        {
+            Instance?.OnRemoteCustomStreamStateChanged?.Invoke(roomId, userId, tag, type, disabled);
+        }
+
+        [MonoPInvokeCallback(typeof(OnRemoteCustomStreamFirstFrameDelegate))]
+        private static void on_remote_custom_stream_first_frame(string roomId, string userId, string tag,
+                                                                RCRTCMediaType type)
+        {
+            Instance?.OnRemoteCustomStreamFirstFrame?.Invoke(roomId, userId, tag, type);
+        }
+
+        [MonoPInvokeCallback(typeof(OnCustomStreamSubscribedDelegate))]
+        private static void on_custom_stream_subscribed(string userId, string tag, RCRTCMediaType type, int code,
+                                                          string errMsg)
+        {
+            Instance?.OnCustomStreamSubscribed?.Invoke(userId, tag, type, code, errMsg);
+        }
+
+        [MonoPInvokeCallback(typeof(OnCustomStreamUnsubscribedDelegate))]
+        private static void on_custom_stream_unsubscribed(string userId, string tag, RCRTCMediaType type, int code,
+                                                          string errMsg)
+        {
+            Instance?.OnCustomStreamUnsubscribed?.Invoke(userId, tag, type, code, errMsg);
+        }
+
+        [MonoPInvokeCallback(typeof(OnLiveRoleSwitchedDelegate))]
+        private static void on_live_role_switched(RCRTCRole current, int code, string errMsg)
+        {
+            Instance?.OnLiveRoleSwitched?.Invoke(current, code, errMsg);
+        }
+
+        [MonoPInvokeCallback(typeof(OnRemoteLiveRoleSwitchedDelegate))]
+        private static void on_remote_live_role_switched(string roomId, string userId, RCRTCRole role)
+        {
+            Instance?.OnRemoteLiveRoleSwitched?.Invoke(roomId, userId, role);
         }
         #endregion
     }

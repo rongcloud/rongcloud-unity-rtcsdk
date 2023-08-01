@@ -52,6 +52,21 @@ namespace cn_rongcloud_rtc_unity
         void OnLiveMixVideoStats(RCRTCRemoteVideoStats stats);
 
         /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="volume"></param>
+        void OnLiveMixMemberAudioStats(String userId, int volume);
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="tag"></param>
+        /// <param name="volume"></param>
+        void OnLiveMixMemberCustomAudioStats(String userId, String tag, int volume);
+
+        /// <summary>
         /// 本地自定义音频信息更新
         /// </summary>
         /// <param name="tag">全局唯一自定义流id</param>

@@ -20,13 +20,16 @@ namespace cn_rongcloud_rtc_unity
         [MarshalAs(UnmanagedType.U1)] public bool enableSRTP;
         public IntPtr audioSetup;
         public IntPtr videoSetup;
+        public string mediaUrl;
+        public string logPath;
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
     internal struct rtc_room_setup
     {
         public int role;
-        public int type;
+        public int mediaType;
+        public int joinType;
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]

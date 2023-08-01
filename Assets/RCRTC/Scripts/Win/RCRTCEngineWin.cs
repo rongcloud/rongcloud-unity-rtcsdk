@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using cn_rongcloud_im_unity;
 
 namespace cn_rongcloud_rtc_unity
 {
@@ -12,9 +13,17 @@ namespace cn_rongcloud_rtc_unity
         private static RCRTCEngineWin Instance = null;
         private IntPtr rtc_engine = IntPtr.Zero;
 
-        internal RCRTCEngineWin(RCRTCEngineSetup setup, IntPtr im_client)
+        internal RCRTCEngineWin(RCRTCEngineSetup setup)
         {
-            NativeWin.rcrtc_init_wrapper_logger(9);
+            IntPtr im_client = IntPtr.Zero;
+            if (RCIMEngine.instance is RCIMWinEngine)
+            {
+                im_client = ((RCIMWinEngine)RCIMEngine.instance).im_client;
+            }
+            if (im_client == IntPtr.Zero)
+            {
+                throw new Exception("璇峰厛鍒濆鍖杋m寮曟搸!");
+            }
             NativeWin.rcrtc_set_engine_listeners(
                     on_rtc_error,
                     on_rtc_kicked,
@@ -55,6 +64,20 @@ namespace cn_rongcloud_rtc_unity
                     on_rtc_remote_first_frame,
                     on_rtc_remote_live_mix_first_frame
                     );
+            NativeWin.rcrtc_set_new_listener(
+                on_custom_stream_published,
+                on_custom_stream_publish_finished,
+                on_custom_stream_unpublished,
+                on_remote_custom_stream_published,
+                on_remote_custom_stream_unpublished,
+                on_remote_custom_stream_state_changed,
+                on_remote_custom_stream_first_frame,
+                on_custom_stream_subscribed,
+                on_custom_stream_unsubscribed,
+                on_live_role_switched,
+                on_remote_live_role_switched,
+                on_live_mix_background_color_set
+                );
             NativeWin.rcrtc_set_camera_change_callback(on_rtc_camera_list_changed);
             NativeWin.rcrtc_set_microphone_change_callback(on_rtc_microphone_list_changed);
             NativeWin.rcrtc_set_speaker_change_callback(on_rtc_speaker_list_changed);
@@ -94,7 +117,6 @@ namespace cn_rongcloud_rtc_unity
             video_frame_listeners.Clear();
             audio_frame_listeners.Clear();
             StatsListener = null;
-            LiveMixVideoFrameListener = null;
             base.Destroy();
         }
 
@@ -345,19 +367,13 @@ namespace cn_rongcloud_rtc_unity
 
         public override int SetLiveMixView(RCRTCView view)
         {
-            LiveMixVideoFrameListener = view;
-            rtc_video_listener_proxy proxy;
-            proxy.remove = view == null;
-            proxy.onVideoFrame = on_rtc_live_mix_video_frame;
+            rtc_video_listener_proxy proxy = toVideoListener(view, "RCRongLiveMix");
             return NativeWin.rcrtc_set_live_mix_video_listener(rtc_engine, ref proxy);
         }
 
         public override int RemoveLiveMixView()
         {
-            LiveMixVideoFrameListener = null;
-            rtc_video_listener_proxy proxy;
-            proxy.remove = true;
-            proxy.onVideoFrame = on_rtc_live_mix_video_frame;
+            rtc_video_listener_proxy proxy = toVideoListener(null, "RCRongLiveMix");
             return NativeWin.rcrtc_set_live_mix_video_listener(rtc_engine, ref proxy);
         }
         #endregion
@@ -388,17 +404,17 @@ namespace cn_rongcloud_rtc_unity
         }*/
         #endregion
 
-        #region Live
+        #region LiveMix
         public override int AddLiveCdn(String url)
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_add_live_cdn(rtc_engine, url);
         }
 
         public override int RemoveLiveCdn(String url)
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_remove_live_cdn(rtc_engine, url);
         }
@@ -452,89 +468,148 @@ namespace cn_rongcloud_rtc_unity
         {
             return NativeWin.rcrtc_set_live_mix_audio_bitrate(rtc_engine, bitrate);
         }
+
+        public override int MuteLiveMixStream(RCRTCMediaType type, bool mute)
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int SetLiveMixBackgroundColor(int color)
+        {
+            return NativeWin.rcrtc_set_live_mix_background_color(rtc_engine, color);
+        }
+
+        public override int EnableLiveMixInnerCdnStream(bool enable)
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int SubscribeLiveMixInnerCdnStream()
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int UnsubscribeLiveMixInnerCdnStream()
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int SetLiveMixInnerCdnStreamView(RCRTCView view)
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int RemoveLiveMixInnerCdnStreamView()
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int SetLocalLiveMixInnerCdnVideoResolution(int width, int height)
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int SetLocalLiveMixInnerCdnVideoFps(RCRTCVideoFps fps)
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int MuteLiveMixInnerCdnStream(bool mute)
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
         #endregion
 
         #region Audio Effect
         public override int CreateAudioEffect(String path, int effectId)
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_create_audio_effect(rtc_engine, path, effectId);
         }
 
         public override int ReleaseAudioEffect(int effectId)
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_release_audio_effect(rtc_engine, effectId);
         }
 
         public override int PlayAudioEffect(int effectId, int volume, int loop)
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_play_audio_effect(rtc_engine, effectId, volume, loop);
         }
 
         public override int PauseAudioEffect(int effectId)
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_pause_audio_effect(rtc_engine, effectId);
         }
 
         public override int PauseAllAudioEffects()
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_pause_all_audio_effects(rtc_engine);
         }
 
         public override int ResumeAudioEffect(int effectId)
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_resume_audio_effect(rtc_engine, effectId);
         }
 
         public override int ResumeAllAudioEffects()
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_resume_all_audio_effects(rtc_engine);
         }
 
         public override int StopAudioEffect(int effectId)
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_stop_audio_effect(rtc_engine, effectId);
         }
 
         public override int StopAllAudioEffects()
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_stop_all_audio_effects(rtc_engine);
         }
 
         public override int AdjustAudioEffectVolume(int effectId, int volume)
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_adjust_audio_effect_volume(rtc_engine, effectId, volume);
         }
 
         public override int GetAudioEffectVolume(int effectId)
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_get_audio_effect_volume(rtc_engine, effectId);
         }
 
         public override int AdjustAllAudioEffectsVolume(int volume)
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_adjust_all_audio_effects_volume(rtc_engine, volume);
         }
@@ -543,84 +618,84 @@ namespace cn_rongcloud_rtc_unity
         #region Audio Mix
         public override int StartAudioMixing(String path, RCRTCAudioMixingMode mode, bool playback, int loop)
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_start_audio_mixing(rtc_engine, path, (int)mode, playback, loop);
         }
 
         public override int StopAudioMixing()
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_stop_audio_mixing(rtc_engine);
         }
 
         public override int PauseAudioMixing()
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_pause_audio_mixing(rtc_engine);
         }
 
         public override int ResumeAudioMixing()
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_resume_audio_mixing(rtc_engine);
         }
 
         public override int AdjustAudioMixingVolume(int volume)
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_adjust_audio_mixing_volume(rtc_engine, volume);
         }
 
         public override int AdjustAudioMixingPlaybackVolume(int volume)
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_adjust_audio_mixing_playback_volume(rtc_engine, volume);
         }
 
         public override int AdjustAudioMixingPublishVolume(int volume)
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_adjust_audio_mixing_publish_volume(rtc_engine, volume);
         }
 
         public override int GetAudioMixingPlaybackVolume()
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_get_audio_mixing_playback_volume(rtc_engine);
         }
 
         public override int GetAudioMixingPublishVolume()
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_get_audio_mixing_publish_volume(rtc_engine);
         }
 
         public override int SetAudioMixingPosition(double position)
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_set_audio_mixing_position(rtc_engine, position);
         }
 
         public override double GetAudioMixingPosition()
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_get_audio_mixing_position(rtc_engine);
         }
 
         public override int GetAudioMixingDuration()
         {
-            Debug.Log("此接口暂时不支持");
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
             return -1;
             //return NativeWin.rcrtc_get_audio_mixing_duration(rtc_engine);
         }
@@ -628,6 +703,166 @@ namespace cn_rongcloud_rtc_unity
         public override String GetSessionId()
         {
             return NativeWin.rcrtc_get_session_id(rtc_engine);
+        }
+        #endregion
+
+        #region Utils
+        public override int SwitchLiveRole(RCRTCRole role)
+        {
+            return NativeWin.rcrtc_switch_live_role(rtc_engine, (int)role);
+        }
+
+        public override int StartNetworkProbe(RCRTCNetworkProbeListener listener)
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int StopNetworkProbe()
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int SetWatermark(string path, double x, double y, double zoom)
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int RemoveWatermark()
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int StartEchoTest(int timeInterval)
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int StopEchoTest()
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int EnableSei(bool enable)
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int SendSei(string sei)
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int PreconnectToMediaServer()
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+        #endregion
+
+        #region CustomStream
+        public override int CreateCustomStreamFromFile(string path, string tag, bool replace, bool playback)
+        {
+            return NativeWin.rcrtc_create_custom_stream_from_file(rtc_engine, path, tag, replace, playback);
+        }
+
+        public override int SetCustomStreamVideoConfig(string tag, RCRTCVideoConfig config)
+        {
+            rtc_video_config cconfig = toVideoConfig(config);
+            return NativeWin.rcrtc_set_custom_stream_video_config(rtc_engine, tag, ref cconfig);
+        }
+
+        public override int MuteLocalCustomStream(string tag, bool mute)
+        {
+            return NativeWin.rcrtc_mute_local_custom_stream(rtc_engine, tag, mute);
+        }
+
+        public override int SetLocalCustomStreamView(string tag, RCRTCView view)
+        {
+            rtc_video_listener_proxy proxy = toVideoListener(view, "RCRongLocalCustom"+tag);
+            return NativeWin.rcrtc_set_local_custom_stream_video_listener(rtc_engine, tag, ref proxy);
+        }
+
+        public override int RemoveLocalCustomStreamView(string tag)
+        {
+            rtc_video_listener_proxy proxy = toVideoListener(null, "RCRongLocalCustom" + tag);
+            return NativeWin.rcrtc_set_local_custom_stream_video_listener(rtc_engine, tag, ref proxy);
+        }
+
+        public override int PublishCustomStream(string tag)
+        {
+            return NativeWin.rcrtc_publich_custom_stream(rtc_engine, tag);
+        }
+
+        public override int UnpublishCustomStream(string tag)
+        {
+            return NativeWin.rcrtc_unpublich_custom_stream(rtc_engine, tag);
+        }
+
+        public override int MuteRemoteCustomStream(string userId, string tag, RCRTCMediaType type, bool mute)
+        {
+            return NativeWin.rcrtc_mute_remote_custom_stream(rtc_engine, userId, tag, (int)type, mute);
+        }
+
+        public override int SetRemoteCustomStreamView(string uerId, string tag, RCRTCView view)
+        {
+            rtc_video_listener_proxy proxy = toVideoListener(view, "RCRongRemoteCustom" + uerId + tag);
+            return NativeWin.rcrtc_set_remote_custom_stream_video_listener(rtc_engine, uerId, tag, ref proxy);
+        }
+
+        public override int RemoveRemoteCustomStreamView(string userId, string tag)
+        {
+            rtc_video_listener_proxy proxy = toVideoListener(null, "RCRongRemoteCustom" + userId + tag);
+            return NativeWin.rcrtc_set_remote_custom_stream_video_listener(rtc_engine, userId, tag, ref proxy);
+        }
+
+        public override int SubscribeCustomStream(string userId, string tag, RCRTCMediaType type, bool tiny)
+        {
+            return NativeWin.rcrtc_subscribe_custom_stream(rtc_engine, userId, tag, (int)type);
+        }
+
+        public override int UnsubscribeCustomStream(string userId, string tag, RCRTCMediaType type)
+        {
+            return NativeWin.rcrtc_unsubscribe_custom_stream(rtc_engine, userId, tag, (int)type);
+        }
+        #endregion
+
+        #region SubRoom
+        public override int RequestJoinSubRoom(string roomId, string userId, bool autoLayout, string extra)
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int CancelJoinSubRoomRequest(string roomId, string userId, string extra)
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int ResponseJoinSubRoomRequest(string roomId, string userId, bool agree, bool autoLayout, string extra)
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int JoinSubRoom(string roomId)
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
+        }
+
+        public override int LeaveSubRoom(string roomId, bool disband)
+        {
+            Debug.Log("姝ゆ帴鍙ｆ殏鏃朵笉鏀寔");
+            return -1;
         }
         #endregion
 
@@ -643,7 +878,6 @@ namespace cn_rongcloud_rtc_unity
         private static Dictionary<string, RCRTCOnVideoFrameListener> video_render_listeners = new Dictionary<string, RCRTCOnVideoFrameListener>();
         private static Dictionary<string, RCRTCOnWritableAudioFrameListener> audio_frame_listeners = new Dictionary<string, RCRTCOnWritableAudioFrameListener>();
         private static Dictionary<string, RCRTCOnWritableVideoFrameListener> video_frame_listeners = new Dictionary<string, RCRTCOnWritableVideoFrameListener>();
-        private static RCRTCOnVideoFrameListener LiveMixVideoFrameListener = null;
 
         private rtc_engine_setup toEngineSetup(RCRTCEngineSetup setup)
         {
@@ -677,6 +911,24 @@ namespace cn_rongcloud_rtc_unity
                 cobject.videoSetup = IntPtr.Zero;
             }
 
+            if (setup.GetMediaUrl() != null)
+            {
+                cobject.mediaUrl = setup.GetMediaUrl();
+            }
+            else
+            {
+                cobject.mediaUrl = "";
+            }
+
+            if (setup.GetLogPath() != null)
+            {
+                cobject.logPath = setup.GetLogPath();
+            }
+            else
+            {
+                cobject.logPath = "";
+            }
+
             return cobject;
         }
 
@@ -684,7 +936,8 @@ namespace cn_rongcloud_rtc_unity
         {
             rtc_room_setup cobject;
             cobject.role = (int)setup.GetRole();
-            cobject.type = (int)setup.GetMediaType();
+            cobject.mediaType = (int)setup.GetMediaType();
+            cobject.joinType = (int)setup.GetJoinType();
             return cobject;
         }
 
@@ -777,6 +1030,7 @@ namespace cn_rongcloud_rtc_unity
             cobject.height = layout.GetHeight();
             return cobject;
         }
+
     }
 }
 

@@ -14,6 +14,18 @@ namespace cn_rongcloud_rtc_unity_example
         [SerializeField] public bool isMirror;
         public RCRTCViewFitType fitType;
 
+        public bool Mirror
+        {
+            set
+            {
+                OnClickedMirror(value);
+            }
+            get
+            {
+                return isMirror;
+            }
+        }
+
         public void Awake()
         {
            if (videoView != null)
@@ -39,7 +51,7 @@ namespace cn_rongcloud_rtc_unity_example
         
         private void OnClickedMirror(bool changed)
         {
-            isMirror = mirrorToggle.isOn; 
+            isMirror = changed; 
             videoView.Mirror = isMirror;
         }
 
